@@ -1,0 +1,209 @@
+"use client";
+
+import * as React from "react";
+import { motion } from "framer-motion";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
+/**
+ * Composite: form to add a subject (code, name, semester) + list of subjects with optional semester filter.
+ */
+export function SubjectsManager({ semesters: initialSemesters, className }) {
+  const [semesters, setSemesters] = React.useState(initialSemesters ?? []);
+  const [subjects, setSubjects] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [listLoading, setListLoading] = React.useState(true);
+  const [filterSemesterId, setFilterSemesterId] = React.useState("");
+  const [code, setCode] = React.useState("");
+  const [name, setName] = React.useState("");
+  const [semesterId, setSemesterId] = React.useState("");
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    if (initialSemesters?.length) setSemesters(initialSemesters);
+    else {
+      fetch("/api/semesters")
+        .then((r) => r.json())
+        .then((data) => setSemesters(Array.isArray(data) ? data : []))
+        .catch(() => setSemesters([]));
+    }
+  }, [initialSemesters]);
+
+  const loadSubjects = React.useCallback(() => {
+    setListLoading(true);
+    const url = filterSemesterId
+      ? `/api/subjects?semesterId=${filterSemesterId}`
+      : "/api/subjects";
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => setSubjects(Array.isArray(data) ? data : []))
+      .catch(() => setSubjects([]))
+      .finally(() => setListLoading(false));
+  }, [filterSemesterId]);
+
+  React.useEffect(() => {
+    loadSubjects();
+  }, [loadSubjects]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (!code.trim() || !name.trim() || !semesterId) {
+      setError("Code, name, and semester are required.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/subjects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim(), name: name.trim(), semesterId: Number(semesterId) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to add subject");
+        return;
+      }
+      setCode("");
+      setName("");
+      setSemesterId("");
+      loadSubjects();
+    } catch (err) {
+      setError(err.message || "Failed to add subject");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const semestersSorted = React.useMemo(
+    () => [...semesters].sort((a, b) => (a.semesterNumber ?? 0) - (b.semesterNumber ?? 0)),
+    [semesters]
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={cn("space-y-6", className)}
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Add subject</CardTitle>
+          <CardDescription>
+            Add a subject with code, name, and semester. Semesters are used for parity (EVEN/ODD) in scheduling.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+          <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+            <div>
+              <Label className="block mb-1">Code</Label>
+              <Input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="e.g. CS101"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <Label className="block mb-1">Name</Label>
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Data Structures"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <Label className="block mb-1">Semester</Label>
+              <select
+                value={semesterId}
+                onChange={(e) => setSemesterId(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select semester</option>
+                {semestersSorted.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Adding…" : "Add subject"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+          <div>
+            <CardTitle>Subjects</CardTitle>
+            <CardDescription>All subjects; filter by semester below.</CardDescription>
+          </div>
+          <div>
+            <Label className="text-sm font-medium sr-only">Filter by semester</Label>
+            <select
+              value={filterSemesterId}
+              onChange={(e) => setFilterSemesterId(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">All semesters</option>
+              {semestersSorted.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {listLoading ? (
+            <p className="text-sm text-muted-foreground py-4">Loading…</p>
+          ) : subjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">No subjects yet. Add one above.</p>
+          ) : (
+            <div className="rounded-md border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left font-medium p-3">Code</th>
+                    <th className="text-left font-medium p-3">Name</th>
+                    <th className="text-left font-medium p-3">Semester</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjects.map((sub) => {
+                    const sem = semesters.find((s) => s.id === sub.semesterId);
+                    return (
+                      <motion.tr
+                        key={sub.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="border-b last:border-0"
+                      >
+                        <td className="p-3 font-mono">{sub.code}</td>
+                        <td className="p-3">{sub.name}</td>
+                        <td className="p-3 text-muted-foreground">
+                          {sem ? `${sem.name}` : sub.semesterId}
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
