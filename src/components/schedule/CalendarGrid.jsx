@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { SlotCard } from "./SlotCard";
-import { MonthCalendar } from "./MonthCalendar";
+import { UnifiedCalendar } from "./UnifiedCalendar";
 import { cn } from "@/lib/utils";
 
 const SLOT_ORDER = ["FORENOON", "AFTERNOON"];
@@ -118,7 +118,9 @@ export function CalendarGrid({ examSlots, viewMode = "day", className }) {
   }
 
   if (viewMode === "month") {
-    return <MonthCalendar examSlots={examSlots} className={className} />;
+    return (
+      <UnifiedCalendar mode="view" examSlots={examSlots} className={className} />
+    );
   }
 
   return <ScheduleTable examSlots={examSlots} className={className} />;

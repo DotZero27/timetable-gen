@@ -6,9 +6,21 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { getNextValidExamDates } from "@/lib/schedule/alternate-dates";
 import { cn } from "@/lib/utils";
 
+const RULE_MESSAGES = {
+  1: "Something went wrong with the session type. Please try again.",
+  4: "Semester and batch don't match. Check your semester list.",
+  5: "Morning session can only have subjects from the batch you selected (even or odd semesters).",
+  6: "On each day, one session must be even semesters and one odd.",
+  7: "Exams cannot be on weekends or holidays.",
+  8: "Not enough working days. Try a longer date range or fewer semesters.",
+};
+
+function getPlainMessage(rule, apiMessage) {
+  return RULE_MESSAGES[rule] ?? apiMessage;
+}
+
 /**
- * Displays error message and, for rule 7 (invalid date), suggests alternate valid dates.
- * Composite: Alert + title + description (message + optional alternate dates).
+ * Displays error in plain language; for rule 7 suggests alternate valid dates.
  */
 export function ErrorAlert({ error, rule, startDate, endDate, holidayDates, onDismiss, className }) {
   const [suggestedDates, setSuggestedDates] = React.useState([]);
@@ -22,6 +34,8 @@ export function ErrorAlert({ error, rule, startDate, endDate, holidayDates, onDi
 
   if (!error) return null;
 
+  const message = getPlainMessage(rule, error);
+
   return (
     <AnimatePresence>
       <motion.div
@@ -30,6 +44,8 @@ export function ErrorAlert({ error, rule, startDate, endDate, holidayDates, onDi
         exit={{ opacity: 0, height: 0 }}
         transition={{ duration: 0.25 }}
         className={cn("overflow-hidden", className)}
+        role="alert"
+        aria-live="polite"
       >
         <Alert variant="destructive" className="relative">
           {onDismiss && (
@@ -42,12 +58,12 @@ export function ErrorAlert({ error, rule, startDate, endDate, holidayDates, onDi
               ×
             </button>
           )}
-          <AlertTitle>Schedule generation failed</AlertTitle>
+          <AlertTitle>We couldn&apos;t create the schedule</AlertTitle>
           <AlertDescription>
-            <p className="font-medium">Rule {rule}: {error}</p>
+            <p className="font-medium">{message}</p>
             {rule === 7 && suggestedDates.length > 0 && (
               <p className="mt-2 text-sm">
-                Suggested valid dates (weekdays, non-holiday):{" "}
+                You can use dates like:{" "}
                 <span className="font-mono text-xs">
                   {suggestedDates.slice(0, 5).join(", ")}
                 </span>

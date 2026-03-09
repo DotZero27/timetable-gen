@@ -75,9 +75,9 @@ export function HolidaysManager({ className }) {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Add holiday or event date</CardTitle>
+          <CardTitle>Add a date when exams cannot be held</CardTitle>
           <CardDescription>
-            Dates added here are excluded from exam scheduling. No exams will be scheduled on these days.
+            No exams will be scheduled on these dates.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -113,7 +113,7 @@ export function HolidaysManager({ className }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Holidays & events</CardTitle>
+          <CardTitle>Dates when exams cannot be held</CardTitle>
           <CardDescription>All dates when exams cannot be held.</CardDescription>
         </CardHeader>
         <CardContent>

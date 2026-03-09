@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Examination Timetable",
-  description: "Examination timetable generation system",
+  title: "Exam Timetable – Create and view exam schedules",
+  description: "Create and view exam schedules for your college. Manage subjects, holidays, and generate timetables by date range and semester.",
 };
 
 export default function RootLayout({ children }) {

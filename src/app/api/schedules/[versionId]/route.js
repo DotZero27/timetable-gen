@@ -41,3 +41,30 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+export async function DELETE(request, { params }) {
+  try {
+    const { versionId } = await params;
+    const id = Number(versionId);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: "Invalid version id" }, { status: 400 });
+    }
+    const db = getDb();
+    const [version] = await db
+      .select()
+      .from(scheduleVersions)
+      .where(eq(scheduleVersions.id, id));
+    if (!version) {
+      return NextResponse.json({ error: "Schedule version not found" }, { status: 404 });
+    }
+    await db.delete(examSlots).where(eq(examSlots.scheduleVersionId, id));
+    await db.delete(scheduleVersions).where(eq(scheduleVersions.id, id));
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: err.message || "Failed to delete schedule" },
+      { status: 500 }
+    );
+  }
+}

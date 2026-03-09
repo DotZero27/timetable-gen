@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Timetable-gen
 
-## Getting Started
+College examination timetable generator. Define semesters and subjects, set holidays, pick a date range and cycle (EVEN or ODD), and generate a deterministic exam schedule with at most two slots per day (Forenoon / Afternoon). Schedules are versioned (draft or published) and stored in SQLite.
 
-First, run the development server:
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The app will create a SQLite database at `.data/sqlite.db` on first run and seed 8 semesters if empty.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See the **[docs](docs/README.md)** folder for:
 
-## Learn More
+- [Architecture](docs/architecture.md) — tech stack, structure, data flow
+- [API reference](docs/api.md) — endpoints and request/response shapes
+- [Database](docs/database.md) — schema and setup
+- [Schedule generation](docs/schedule-generation.md) — algorithm and validation rules
+- [Development](docs/development.md) — install, run, lint, where to change things
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` — ensure DB, then start Next.js dev server
+- `npm run build` — build for production
+- `npm run start` — ensure DB, then start production server
+- `npm run lint` — run ESLint

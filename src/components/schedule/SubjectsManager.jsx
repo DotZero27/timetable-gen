@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 /**
  * Composite: form to add a subject (code, name, semester) + list of subjects with optional semester filter.
@@ -91,9 +98,9 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Add subject</CardTitle>
+          <CardTitle>Add a subject</CardTitle>
           <CardDescription>
-            Add a subject with code, name, and semester. Semesters are used for parity (EVEN/ODD) in scheduling.
+            Add a subject with code, name, and semester. Semester is used to group exams (even/odd) when creating schedules.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -123,18 +130,18 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
             </div>
             <div>
               <Label className="block mb-1">Semester</Label>
-              <select
-                value={semesterId}
-                onChange={(e) => setSemesterId(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select semester</option>
-                {semestersSorted.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={semesterId || undefined} onValueChange={setSemesterId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  {semestersSorted.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button type="submit" disabled={loading}>
               {loading ? "Adding…" : "Add subject"}
@@ -151,18 +158,19 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
           </div>
           <div>
             <Label className="text-sm font-medium sr-only">Filter by semester</Label>
-            <select
-              value={filterSemesterId}
-              onChange={(e) => setFilterSemesterId(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">All semesters</option>
-              {semestersSorted.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <Select value={filterSemesterId || "all"} onValueChange={(v) => setFilterSemesterId(v === "all" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All semesters</SelectItem>
+                {semestersSorted.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 /** Weekday labels for all calendar views */
 export const CALENDAR_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -14,27 +15,29 @@ export function CalendarNav({ monthLabel, onPrev, onNext, className }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-lg border border-border bg-muted/30 p-1",
+        "flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/30 p-1",
         className
       )}
     >
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="icon"
         onClick={onPrev}
-        className="rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Previous month"
       >
         <ChevronLeftIcon className="size-4" />
-      </button>
-      <span className="text-base font-semibold text-foreground">{monthLabel}</span>
-      <button
+      </Button>
+      <span className="text-sm font-medium text-foreground">{monthLabel}</span>
+      <Button
         type="button"
+        variant="outline"
+        size="icon"
         onClick={onNext}
-        className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Next month"
       >
         <ChevronRightIcon className="size-4" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -46,7 +49,7 @@ export function CalendarFrame({ children, className }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card overflow-hidden shadow-sm",
+        "rounded-xl rounded-t-none border border-border bg-card overflow-hidden",
         className
       )}
     >

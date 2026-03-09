@@ -1,3 +1,6 @@
+export { UnifiedCalendar, ScheduleCalendar } from "./UnifiedCalendar";
+export { AppProvider, useApp } from "./AppContext";
+export { Canvas } from "./Canvas";
 export { SlotCard } from "./SlotCard";
 export { DayCell } from "./DayCell";
 export { CalendarGrid } from "./CalendarGrid";
@@ -17,7 +20,8 @@ export {
 } from "./CalendarComposite";
 export { VersionSelector } from "./VersionSelector";
 export { ErrorAlert } from "./ErrorAlert";
-export { GenerateForm } from "./GenerateForm";
+export { GenerateForm, CreateScheduleProperties } from "./GenerateForm";
+export { GenerateProvider, useGenerate } from "./GenerateContext";
 export { DateRangeCalendar } from "./DateRangeCalendar";
 export { AssignmentCalendar } from "./AssignmentCalendar";
 export { SubjectsManager } from "./SubjectsManager";
