@@ -109,6 +109,7 @@ export function Canvas() {
   const [leftPanelOpen, setLeftPanelOpen] = React.useState(true);
   const [rightPanelOpen, setRightPanelOpen] = React.useState(true);
   const [layoutSection, setLayoutSection] = React.useState(activeSection);
+  const [panelAnimKey, setPanelAnimKey] = React.useState(0);
 
   const activeSectionRef = React.useRef(activeSection);
   activeSectionRef.current = activeSection;
@@ -229,6 +230,7 @@ export function Canvas() {
                 raf5 = requestAnimationFrame(() => {
                   setLeftPanelOpen(true);
                   setRightPanelOpen(true);
+                  setPanelAnimKey((k) => k + 1);
                   setLayoutSection(section);
                   // Keep skipResizePanRef true; after panels expand and layout settles, do one smooth recenter then clear refs
                   raf6 = requestAnimationFrame(() => {
@@ -681,6 +683,7 @@ export function Canvas() {
               className="z-10 min-w-0 bg-background border-r border-border flex flex-col"
             >
               <motion.aside
+                key={`left-${panelAnimKey}`}
                 aria-label="Schedules list"
                 className="flex flex-col h-full overflow-hidden"
                 {...LEFT_PANEL_ANIMATION}
@@ -736,6 +739,7 @@ export function Canvas() {
               className="z-10 min-w-0 bg-background border-l border-border flex flex-col"
             >
               <motion.aside
+                key={`right-${panelAnimKey}`}
                 aria-label="Properties"
                 className="flex flex-col h-full overflow-hidden"
                 {...RIGHT_PANEL_ANIMATION}
