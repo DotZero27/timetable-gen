@@ -50,9 +50,6 @@ const PANEL_MIN_PX = 320;
 const PANEL_MAX_PX = 560;
 const PANEL_DEFAULT_PX = 400;
 
-/** Nudge section toward center when left panel is open (Schedules). Applied only for sections with left panel. */
-const LEFT_PANEL_CENTER_OFFSET_X = 24;
-
 const SECTIONS = {
   schedules: { x: 0, y: 0, label: "Schedules" },
   generate: { x: ARTBOARD_W + GAP, y: 0, label: "Create Schedule" },
@@ -68,16 +65,17 @@ const NAV_ITEMS = [
 ];
 
 const SPRING = { type: "spring", stiffness: 170, damping: 26 };
+const EASE = { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] };
 
 /** Panel enter animation: matches pan spring feel (~0.3s) */
-const PANEL_TRANSITION = { duration: 0.28, ease: [0.25, 0.1, 0.25, 1] };
+const PANEL_TRANSITION = { duration: 0.15, ease: [0.25, 0.1, 0.25, 1] };
 const LEFT_PANEL_ANIMATION = {
-  initial: { x: -24, opacity: 0 },
+  initial: { x: -12, opacity: 0 },
   animate: { x: 0, opacity: 1 },
   transition: PANEL_TRANSITION,
 };
 const RIGHT_PANEL_ANIMATION = {
-  initial: { x: 24, opacity: 0 },
+  initial: { x: 12, opacity: 0 },
   animate: { x: 0, opacity: 1 },
   transition: PANEL_TRANSITION,
 };
@@ -163,9 +161,8 @@ export function Canvas() {
 
   // Center the selected section in the canvas viewport (same when left or right panel is active)
   // Use zoom from DOM when available so pan math matches rendered scale (fixes wrong pan when zoomed in).
-  // options.centerOffsetX: nudge target X (e.g. when left panel is open) so section sits slightly more toward center.
   const panTo = React.useCallback(
-    (sectionId, animated = true, options = {}) => {
+    (sectionId, animation = SPRING) => {
       const pos = SECTIONS[sectionId];
       if (!pos) return Promise.resolve();
       const { w: vw, h: vh } = getViewportSize();
@@ -178,14 +175,13 @@ export function Canvas() {
       const centerY = vh / 2;
       const artboardCenterX = pos.x + ARTBOARD_W / 2;
       const artboardCenterY = pos.y + ARTBOARD_CENTER_Y;
-      let targetX = centerX - artboardCenterX * z;
+      const targetX = centerX - artboardCenterX * z;
       const targetY = centerY - artboardCenterY * z;
-      if (options.centerOffsetX != null) targetX += options.centerOffsetX;
 
-      if (animated) {
+      if (animation) {
         return Promise.all([
-          motionAnimate(canvasX, targetX, SPRING),
-          motionAnimate(canvasY, targetY, SPRING),
+          motionAnimate(canvasX, targetX, animation),
+          motionAnimate(canvasY, targetY, animation),
         ]).then(() => { });
       }
       canvasX.set(targetX);
@@ -204,7 +200,6 @@ export function Canvas() {
     let raf3 = null;
     let raf4 = null;
     let raf5 = null;
-    let raf6 = null;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         raf3 = requestAnimationFrame(() => {
@@ -216,8 +211,13 @@ export function Canvas() {
           if (isInitialMount.current) {
             isInitialMount.current = false;
             setLayoutSection(section);
-            panTo(section, false, section === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {});
-            skipResizePanRef.current = false;
+            // Wait for react-resizable-panels to commit its layout before measuring viewport
+            raf4 = requestAnimationFrame(() => {
+              raf5 = requestAnimationFrame(() => {
+                panTo(section, null);
+                skipResizePanRef.current = false;
+              });
+            });
             return;
           }
           sectionChangeInProgressRef.current = true;
@@ -225,65 +225,37 @@ export function Canvas() {
           const willHaveLeft = section === "schedules";
           const willHaveRight = section === "generate" || (section === "schedules" && selectedDay != null);
 
-          if (isLeftPanelSection) {
-            // Left-panel section: open panel first, then smooth pan the section into place (no viewport shift during pan).
-            setLayoutSection("subjects");
-            raf4 = requestAnimationFrame(() => {
-              raf4 = requestAnimationFrame(() => {
-                skipSyncExpandRef.current = true;
-                setLeftPanelOpen(true);
-                setRightPanelOpen(true);
-                setPanelAnimKey((k) => k + 1);
-                setLayoutSection(section);
-                raf5 = requestAnimationFrame(() => {
-                  raf5 = requestAnimationFrame(() => {
-                    if (willHaveLeft) leftPanelRef.current?.expand();
-                    else leftPanelRef.current?.collapse();
-                    if (willHaveRight) rightPanelRef.current?.expand();
-                    else rightPanelRef.current?.collapse();
-                    void viewportRef.current?.getBoundingClientRect();
-                    skipSyncExpandRef.current = false;
-                    panTo(section, true, { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X }).then(() => {
-                      skipResizePanRef.current = false;
-                      sectionChangeInProgressRef.current = false;
-                    });
-                  });
-                });
+          // Open panels and pan simultaneously — panels appear as the section slides in.
+          const oldLeft = isLeftPanelSection
+            ? (viewportRef.current?.getBoundingClientRect().left ?? 0)
+            : 0;
+          skipSyncExpandRef.current = true;
+          setLeftPanelOpen(true);
+          setRightPanelOpen(true);
+          setPanelAnimKey((k) => k + 1);
+          setLayoutSection(section);
+          raf4 = requestAnimationFrame(() => {
+            if (willHaveLeft) leftPanelRef.current?.expand();
+            else leftPanelRef.current?.collapse();
+            if (willHaveRight) rightPanelRef.current?.expand();
+            else rightPanelRef.current?.collapse();
+            // Wait for React to commit expand before measuring / panning
+            raf5 = requestAnimationFrame(() => {
+              if (isLeftPanelSection) {
+                // Compensate canvasX so content stays visually in place despite viewport shift
+                const newLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
+                const shift = newLeft - oldLeft;
+                if (shift !== 0) canvasX.set(canvasX.get() - shift);
+              }
+              skipSyncExpandRef.current = false;
+              // Left-panel: smooth ease (no spring overshoot). Other sections: spring.
+              const anim = isLeftPanelSection ? EASE : SPRING;
+              panTo(section, anim).then(() => {
+                skipResizePanRef.current = false;
+                sectionChangeInProgressRef.current = false;
               });
             });
-          } else {
-            // Right-panel or no-panel sections: close → pan → open panels → set canvas to center.
-            setLayoutSection("subjects");
-            raf4 = requestAnimationFrame(() => {
-              raf4 = requestAnimationFrame(() => {
-                panTo(section, true).then(() => {
-                  if (activeSectionRef.current !== section) {
-                    skipResizePanRef.current = false;
-                    sectionChangeInProgressRef.current = false;
-                    return;
-                  }
-                  raf5 = requestAnimationFrame(() => {
-                    skipSyncExpandRef.current = true;
-                    setLeftPanelOpen(true);
-                    setRightPanelOpen(true);
-                    setPanelAnimKey((k) => k + 1);
-                    setLayoutSection(section);
-                    raf6 = requestAnimationFrame(() => {
-                      if (willHaveLeft) leftPanelRef.current?.expand();
-                      else leftPanelRef.current?.collapse();
-                      if (willHaveRight) rightPanelRef.current?.expand();
-                      else rightPanelRef.current?.collapse();
-                      void viewportRef.current?.getBoundingClientRect();
-                      panTo(activeSectionRef.current, false);
-                      skipSyncExpandRef.current = false;
-                      skipResizePanRef.current = false;
-                      sectionChangeInProgressRef.current = false;
-                    });
-                  });
-                });
-              });
-            });
-          }
+          });
         });
       });
     });
@@ -293,7 +265,6 @@ export function Canvas() {
       if (raf3 !== null) cancelAnimationFrame(raf3);
       if (raf4 !== null) cancelAnimationFrame(raf4);
       if (raf5 !== null) cancelAnimationFrame(raf5);
-      if (raf6 !== null) cancelAnimationFrame(raf6);
     };
   }, [activeSection, panTo]);
 
@@ -306,8 +277,7 @@ export function Canvas() {
       resizeRafRef.current = requestAnimationFrame(() => {
         resizeRafRef.current = null;
         if (skipResizePanRef.current || sectionChangeInProgressRef.current) return;
-        const opts = activeSection === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {};
-        panTo(activeSection, true, opts);
+        panTo(activeSection, null);
       });
     };
     const ro = new ResizeObserver(handleResize);
@@ -321,30 +291,11 @@ export function Canvas() {
   // Also recenter on window resize (e.g. browser window resize)
   React.useEffect(() => {
     const handleResize = () => {
-      const opts = activeSection === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {};
-      panTo(activeSection, false, opts);
+      panTo(activeSection, null);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [activeSection, panTo]);
-
-  // Recenter when panel open/close changes (viewport resizes); double rAF so layout has settled
-  React.useEffect(() => {
-    let raf2 = null;
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        if (sectionChangeInProgressRef.current) return;
-        if (viewportRef.current) {
-          const opts = activeSection === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {};
-          panTo(activeSection, true, opts);
-        }
-      });
-    });
-    return () => {
-      cancelAnimationFrame(raf1);
-      if (raf2 !== null) cancelAnimationFrame(raf2);
-    };
-  }, [leftPanelOpen, rightPanelOpen, activeSection, panTo]);
 
   // Reset dismissCreated when justCreated changes
   React.useEffect(() => {
