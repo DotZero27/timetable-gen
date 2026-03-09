@@ -108,6 +108,10 @@ export function Canvas() {
   const [selectedDay, setSelectedDay] = React.useState(null);
   const [leftPanelOpen, setLeftPanelOpen] = React.useState(true);
   const [rightPanelOpen, setRightPanelOpen] = React.useState(true);
+  const [layoutSection, setLayoutSection] = React.useState(activeSection);
+
+  const activeSectionRef = React.useRef(activeSection);
+  activeSectionRef.current = activeSection;
 
   // Canvas camera (transform offsets)
   const canvasX = useMotionValue(0);
@@ -120,7 +124,10 @@ export function Canvas() {
   const isDragging = React.useRef(false);
   const dragStart = React.useRef({ x: 0, y: 0, cx: 0, cy: 0 });
   const skipResizePanRef = React.useRef(false);
+  const sectionChangeInProgressRef = React.useRef(false);
   const resizeRafRef = React.useRef(null);
+  const leftPanelRef = React.useRef(null);
+  const rightPanelRef = React.useRef(null);
 
   // Sync dot-grid background position and size with canvas pan/zoom
   const syncBackground = React.useCallback(() => {
@@ -154,7 +161,7 @@ export function Canvas() {
   const panTo = React.useCallback(
     (sectionId, animated = true) => {
       const pos = SECTIONS[sectionId];
-      if (!pos) return;
+      if (!pos) return Promise.resolve();
       const { w: vw, h: vh } = getViewportSize();
       const zoomVal = zoomContainerRef.current?.style?.zoom;
       const currentZoom = zoomVal != null && zoomVal !== ""
@@ -169,36 +176,71 @@ export function Canvas() {
       const targetY = centerY - artboardCenterY * z;
 
       if (animated) {
-        motionAnimate(canvasX, targetX, SPRING);
-        motionAnimate(canvasY, targetY, SPRING);
-      } else {
-        canvasX.set(targetX);
-        canvasY.set(targetY);
+        return Promise.all([
+          motionAnimate(canvasX, targetX, SPRING),
+          motionAnimate(canvasY, targetY, SPRING),
+        ]).then(() => { });
       }
+      canvasX.set(targetX);
+      canvasY.set(targetY);
+      return Promise.resolve();
     },
     [canvasX, canvasY, zoom, getViewportSize]
   );
 
-  // Pan to section on activeSection change — triple rAF so layout (and panel size) is stable before measuring viewport
+  // Pan to section on activeSection change.
+  // On section change: close current panels (layoutSection → no panels), then pan, then open new section's panel (layoutSection → activeSection).
   React.useEffect(() => {
+    const section = activeSection;
     skipResizePanRef.current = true;
     let raf2 = null;
     let raf3 = null;
+    let raf4 = null;
+    let raf5 = null;
+    let raf6 = null;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         raf3 = requestAnimationFrame(() => {
           if (!viewportRef.current) {
             skipResizePanRef.current = false;
+            sectionChangeInProgressRef.current = false;
             return;
           }
-          // Pan to center the selected section; keep current zoom (do not reset to 100%)
           if (isInitialMount.current) {
             isInitialMount.current = false;
-            panTo(activeSection, false);
-          } else {
-            panTo(activeSection, true);
+            setLayoutSection(section);
+            panTo(section, false);
+            skipResizePanRef.current = false;
+            return;
           }
-          skipResizePanRef.current = false;
+          sectionChangeInProgressRef.current = true;
+          // Close current section's panels by using a section that has no side panels
+          setLayoutSection("subjects");
+          // Wait for collapse to take effect, then pan to destination
+          raf4 = requestAnimationFrame(() => {
+            raf4 = requestAnimationFrame(() => {
+              panTo(section, true).then(() => {
+                if (activeSectionRef.current !== section) {
+                  skipResizePanRef.current = false;
+                  sectionChangeInProgressRef.current = false;
+                  return;
+                }
+                // Open panels only after we have reached the section: wait one frame so the arrival is painted, then set layout
+                raf5 = requestAnimationFrame(() => {
+                  setLeftPanelOpen(true);
+                  setRightPanelOpen(true);
+                  setLayoutSection(section);
+                  // Keep skipResizePanRef true; after panels expand and layout settles, do one smooth recenter then clear refs
+                  raf6 = requestAnimationFrame(() => {
+                    panTo(activeSectionRef.current, true).then(() => {
+                      skipResizePanRef.current = false;
+                      sectionChangeInProgressRef.current = false;
+                    });
+                  });
+                });
+              });
+            });
+          });
         });
       });
     });
@@ -206,6 +248,9 @@ export function Canvas() {
       cancelAnimationFrame(raf1);
       if (raf2 !== null) cancelAnimationFrame(raf2);
       if (raf3 !== null) cancelAnimationFrame(raf3);
+      if (raf4 !== null) cancelAnimationFrame(raf4);
+      if (raf5 !== null) cancelAnimationFrame(raf5);
+      if (raf6 !== null) cancelAnimationFrame(raf6);
     };
   }, [activeSection, panTo]);
 
@@ -217,8 +262,8 @@ export function Canvas() {
       if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
       resizeRafRef.current = requestAnimationFrame(() => {
         resizeRafRef.current = null;
-        if (skipResizePanRef.current) return;
-        panTo(activeSection, false);
+        if (skipResizePanRef.current || sectionChangeInProgressRef.current) return;
+        panTo(activeSection, true);
       });
     };
     const ro = new ResizeObserver(handleResize);
@@ -241,7 +286,8 @@ export function Canvas() {
     let raf2 = null;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        if (viewportRef.current) panTo(activeSection, false);
+        if (sectionChangeInProgressRef.current) return;
+        if (viewportRef.current) panTo(activeSection, true);
       });
     });
     return () => {
@@ -379,11 +425,47 @@ export function Canvas() {
 
   const showCreatedBanner = justCreated && !dismissCreated;
 
-  const hasLeftPanel = activeSection === "schedules";
+  const hasLeftPanel = layoutSection === "schedules";
   const hasPropertiesPanel =
-    activeSection === "generate" || (activeSection === "schedules" && selectedDay != null);
+    layoutSection === "generate" || (layoutSection === "schedules" && selectedDay != null);
   const leftPanelRendered = hasLeftPanel && leftPanelOpen;
   const rightPanelRendered = hasPropertiesPanel && rightPanelOpen;
+
+  // Initial layout for single panel group: percentages so only active panels get space
+  const defaultLayout = React.useMemo(() => {
+    const left = hasLeftPanel && leftPanelOpen ? 22 : 0;
+    const right = hasPropertiesPanel && rightPanelOpen ? 22 : 0;
+    const center = 100 - left - right;
+    return { left, center, right };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: only use initial state for first paint
+
+  // Sync panel open/close state with collapse/expand so we don't unmount the tree
+  React.useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      if (hasLeftPanel && leftPanelOpen) {
+        leftPanelRef.current?.expand();
+      } else {
+        leftPanelRef.current?.collapse();
+      }
+      if (hasPropertiesPanel && rightPanelOpen) {
+        rightPanelRef.current?.expand();
+      } else {
+        rightPanelRef.current?.collapse();
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [leftPanelOpen, rightPanelOpen, hasLeftPanel, hasPropertiesPanel]);
+
+  // When user drags a panel to width 0, sync open state so the edge toggle button appears.
+  // Skip during section change so the programmatic collapse doesn't permanently close panels.
+  const handleLayoutChanged = React.useCallback(
+    (layout) => {
+      if (sectionChangeInProgressRef.current) return;
+      if (layout.left !== undefined && layout.left === 0) setLeftPanelOpen(false);
+      if (layout.right !== undefined && layout.right === 0) setRightPanelOpen(false);
+    },
+    []
+  );
 
   const handleScheduleDelete = React.useCallback(
     (version) => {
@@ -581,34 +663,45 @@ export function Canvas() {
     <>
       <div className="fixed inset-0 flex">
         <GenerateProvider semesters={semesters} onSuccess={handleGenerateSuccess}>
-          {leftPanelRendered && rightPanelRendered ? (
-            <ResizablePanelGroup
-              key="with-schedules-and-detail"
-              direction="horizontal"
-              className="flex-1 min-h-0 z-0"
+          <ResizablePanelGroup
+            id="canvas-layout"
+            direction="horizontal"
+            orientation="horizontal"
+            className="flex-1 min-h-0 z-0"
+            defaultLayout={defaultLayout}
+            onLayoutChanged={handleLayoutChanged}
+          >
+            <ResizablePanel
+              id="left"
+              panelRef={leftPanelRef}
+              collapsible
+              minSize={PANEL_MIN_PX}
+              defaultSize={PANEL_DEFAULT_PX}
+              maxSize={PANEL_MAX_PX}
+              className="z-10 min-w-0 bg-background border-r border-border flex flex-col"
             >
-              <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-r border-border flex flex-col">
-                <motion.aside
-                  aria-label="Schedules list"
-                  className="flex flex-col h-full overflow-hidden"
-                  {...LEFT_PANEL_ANIMATION}
-                >
-                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setLeftPanelOpen(false)}
-                      aria-label="Close panel"
-                    >
-                      <X className="size-4" />
-                    </Button>
+              <motion.aside
+                aria-label="Schedules list"
+                className="flex flex-col h-full overflow-hidden"
+                {...LEFT_PANEL_ANIMATION}
+              >
+                <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
                   </div>
-                  <div className="p-4 flex-1 overflow-y-auto min-h-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setLeftPanelOpen(false)}
+                    aria-label="Close panel"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+                <div className="p-4 flex-1 overflow-y-auto min-h-0">
+                  {hasLeftPanel ? (
                     <VersionSelector
                       versions={versions}
                       selectedId={selectedVersionId}
@@ -616,136 +709,63 @@ export function Canvas() {
                       onDelete={handleScheduleDelete}
                       loading={versionsLoading}
                     />
-                  </div>
-                </motion.aside>
-              </ResizablePanel>
+                  ) : null}
+                </div>
+              </motion.aside>
+            </ResizablePanel>
+            {hasLeftPanel ? (
               <ResizableHandle withHandle className="shrink-0 z-20" />
-              <ResizablePanel maxSize={(PANEL_MIN_PX * ARTBOARD_W) / 4} className="min-w-0">
-                {canvasViewport}
-              </ResizablePanel>
-              <ResizableHandle withHandle className="shrink-0 z-20" />
-              <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-l border-border flex flex-col">
-                <motion.aside
-                  aria-label="Properties"
-                  className="flex flex-col h-full overflow-hidden"
-                  {...RIGHT_PANEL_ANIMATION}
-                >
-                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setRightPanelOpen(false)}
-                      aria-label="Close panel"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                  <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-                    <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
-                      {propertiesPanelContent()}
-                    </div>
-                  </div>
-                  {activeSection === "generate" && (
-                    <div ref={generateActionRef} className="p-4 pt-2 border-t border-border shrink-0" />
-                  )}
-                </motion.aside>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          ) : leftPanelRendered ? (
-            <ResizablePanelGroup
-              key="with-schedules-list"
-              direction="horizontal"
-              className="flex-1 min-h-0 z-0"
-            >
-              <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-r border-border flex flex-col">
-                <motion.aside
-                  aria-label="Schedules list"
-                  className="flex flex-col h-full overflow-hidden"
-                  {...LEFT_PANEL_ANIMATION}
-                >
-                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setLeftPanelOpen(false)}
-                      aria-label="Close panel"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                  <div className="p-4 flex-1 overflow-y-auto min-h-0">
-                    <VersionSelector
-                      versions={versions}
-                      selectedId={selectedVersionId}
-                      onSelect={handleSelectVersion}
-                      onDelete={handleScheduleDelete}
-                      loading={versionsLoading}
-                    />
-                  </div>
-                </motion.aside>
-              </ResizablePanel>
-              <ResizableHandle withHandle className="shrink-0 z-20" />
-              <ResizablePanel maxSize={(PANEL_MIN_PX * ARTBOARD_W) / 4} className="min-w-0">
-                {canvasViewport}
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          ) : rightPanelRendered ? (
-            <ResizablePanelGroup
-              key="with-properties"
-              direction="horizontal"
-              className="flex-1 min-h-0 z-0"
-            >
-              <ResizablePanel maxSize={(PANEL_MIN_PX * ARTBOARD_W) / 4} className="min-w-0">
-                {canvasViewport}
-              </ResizablePanel>
-              <ResizableHandle withHandle className="shrink-0 z-20" />
-              <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-l border-border flex flex-col">
-                <motion.aside
-                  aria-label="Properties"
-                  className="flex flex-col h-full overflow-hidden"
-                  {...RIGHT_PANEL_ANIMATION}
-                >
-                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setRightPanelOpen(false)}
-                      aria-label="Close panel"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                  <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-                    <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
-                      {propertiesPanelContent()}
-                    </div>
-                  </div>
-                  {activeSection === "generate" && (
-                    <div ref={generateActionRef} className="p-4 pt-2 border-t border-border shrink-0" />
-                  )}
-                </motion.aside>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          ) : (
-            <div className="flex-1 min-h-0 min-w-0">
+            ) : (
+              <ResizableHandle withHandle={false} disabled className="shrink-0 z-20 w-0 min-w-0 overflow-hidden opacity-0 pointer-events-none border-0" />
+            )}
+            <ResizablePanel id="center" maxSize={(PANEL_MIN_PX * ARTBOARD_W) / 4} className="min-w-0">
               {canvasViewport}
-            </div>
-          )}
+            </ResizablePanel>
+            {hasPropertiesPanel ? (
+              <ResizableHandle withHandle className="shrink-0 z-20" />
+            ) : (
+              <ResizableHandle withHandle={false} disabled className="shrink-0 z-20 w-0 min-w-0 overflow-hidden opacity-0 pointer-events-none border-0" />
+            )}
+            <ResizablePanel
+              id="right"
+              panelRef={rightPanelRef}
+              collapsible
+              minSize={PANEL_MIN_PX}
+              defaultSize={PANEL_DEFAULT_PX}
+              maxSize={PANEL_MAX_PX}
+              className="z-10 min-w-0 bg-background border-l border-border flex flex-col"
+            >
+              <motion.aside
+                aria-label="Properties"
+                className="flex flex-col h-full overflow-hidden"
+                {...RIGHT_PANEL_ANIMATION}
+              >
+                <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setRightPanelOpen(false)}
+                    aria-label="Close panel"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+                <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+                  <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
+                    {hasPropertiesPanel ? propertiesPanelContent() : null}
+                  </div>
+                </div>
+                {activeSection === "generate" && (
+                  <div ref={generateActionRef} className="p-4 pt-2 border-t border-border shrink-0" />
+                )}
+              </motion.aside>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </GenerateProvider>
       </div>
 

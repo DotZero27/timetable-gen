@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRightIcon, ChevronLeftIcon, Check, CalendarRange, BookOpen, Pin, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "./ErrorAlert";
+import { toISODate } from "./CalendarComposite";
 import { UnifiedCalendar } from "./UnifiedCalendar";
 import { useGenerate } from "./GenerateContext";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,7 @@ function countWorkingDays(startDate, endDate, holidaySet) {
   const d = new Date(start);
   while (d <= end) {
     const day = d.getDay();
-    const iso = d.toISOString().slice(0, 10);
+    const iso = toISODate(d);
     if (day !== 0 && day !== 6 && !holidaySet.has(iso)) count++;
     d.setDate(d.getDate() + 1);
   }

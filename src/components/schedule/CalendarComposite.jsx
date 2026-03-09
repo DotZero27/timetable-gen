@@ -127,9 +127,12 @@ export function calendarPickerCellStyles({ isWeekend, isHoliday, isSelected, inR
   );
 }
 
-/** YYYY-MM-DD for a Date */
+/** YYYY-MM-DD for a Date (uses local date components to avoid timezone shift). */
 export function toISODate(d) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 /** Build month grid: array of Date | null for a given year/month */

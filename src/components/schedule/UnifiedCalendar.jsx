@@ -59,10 +59,16 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
     return set;
   }, [date, fixedAssignments]);
 
+  const assignedSubjectIds = React.useMemo(
+    () => new Set((fixedAssignments || []).map((a) => a.subjectId)),
+    [fixedAssignments]
+  );
+
   const handleSubmit = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!subjectId) return;
+    if (assignedSubjectIds.has(Number(subjectId))) return;
     const key = `${slot}:${subjectId}`;
     if (used.has(key)) return;
     const sub = subjects.find((s) => s.id === Number(subjectId));
@@ -84,6 +90,8 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
     return false;
   };
 
+  const isSubjectAlreadyAssigned = (id) => assignedSubjectIds.has(id);
+
   return (
     <form onSubmit={handleSubmit} className="mt-3 space-y-3" noValidate>
       <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted p-2 rounded-md">
@@ -97,11 +105,19 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
             <SelectValue placeholder="Select subject" />
           </SelectTrigger>
           <SelectContent>
-            {subjects.map((s) => (
-              <SelectItem key={s.id} value={String(s.id)}>
-                {s.code} — {s.name}
-              </SelectItem>
-            ))}
+            {subjects.map((s) => {
+              const alreadyAssigned = isSubjectAlreadyAssigned(s.id);
+              return (
+                <SelectItem
+                  key={s.id}
+                  value={String(s.id)}
+                  disabled={alreadyAssigned}
+                >
+                  {s.code} — {s.name}
+                  {alreadyAssigned ? " (already assigned)" : ""}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
@@ -121,7 +137,7 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" size="sm" disabled={!subjectId}>
+      <Button type="submit" size="sm" disabled={!subjectId || isSubjectAlreadyAssigned(Number(subjectId))}>
         Add
       </Button>
     </form>
