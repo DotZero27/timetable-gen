@@ -21,7 +21,7 @@ const toggleContainerClass =
  * Composite: header (version info) + view mode toggle (by day / month) + CalendarGrid.
  * Used when a schedule version is selected.
  */
-export function CalendarView({ schedule, className }) {
+export function CalendarView({ schedule, onDayClick, selectedDay, className }) {
   if (!schedule) return null;
 
   const [viewMode, setViewMode] = React.useState("month");
@@ -84,7 +84,12 @@ export function CalendarView({ schedule, className }) {
           </div>
         </CardHeader>
         <CardContent>
-          <CalendarGrid examSlots={examSlots} viewMode={viewMode} />
+          <CalendarGrid
+            examSlots={examSlots}
+            viewMode={viewMode}
+            onDayClick={onDayClick}
+            selectedDay={selectedDay}
+          />
         </CardContent>
       </Card>
     </motion.div>

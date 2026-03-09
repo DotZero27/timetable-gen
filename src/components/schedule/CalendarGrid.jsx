@@ -101,7 +101,7 @@ function ScheduleTable({ examSlots, className }) {
 /**
  * Renders schedule in either "day" (table by day) or "month" (monthly calendar) mode.
  */
-export function CalendarGrid({ examSlots, viewMode = "day", className }) {
+export function CalendarGrid({ examSlots, viewMode = "day", onDayClick, selectedDay, className }) {
   if (!examSlots?.length) {
     return (
       <motion.div
@@ -119,7 +119,13 @@ export function CalendarGrid({ examSlots, viewMode = "day", className }) {
 
   if (viewMode === "month") {
     return (
-      <UnifiedCalendar mode="view" examSlots={examSlots} className={className} />
+      <UnifiedCalendar
+        mode="view"
+        examSlots={examSlots}
+        onDayClick={onDayClick}
+        selectedDay={selectedDay}
+        className={className}
+      />
     );
   }
 

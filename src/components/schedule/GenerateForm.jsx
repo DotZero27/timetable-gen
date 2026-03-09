@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRightIcon, ChevronLeftIcon, Check } from "lucide-react";
+import { ChevronRightIcon, ChevronLeftIcon, Check, CalendarRange, BookOpen, Pin, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "./ErrorAlert";
 import { UnifiedCalendar } from "./UnifiedCalendar";
@@ -30,6 +30,22 @@ const STEPS = [
 ];
 
 const FORM_ID = "generate-schedule-form";
+
+/** Count working days (exclude weekends and holidays) in [start, end] inclusive. */
+function countWorkingDays(startDate, endDate, holidaySet) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  let count = 0;
+  const d = new Date(start);
+  while (d <= end) {
+    const day = d.getDay();
+    const iso = d.toISOString().slice(0, 10);
+    if (day !== 0 && day !== 6 && !holidaySet.has(iso)) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
 
 /**
  * Form progress: stepper with step labels.
@@ -88,6 +104,7 @@ function FormProgressStepper() {
 /**
  * Create Schedule properties panel content (exam batch, semesters, stepper, summary, fixed assignments).
  * Rendered in the right-side properties panel when activeSection === "generate".
+ * Uses full panel height with a persistent summary and scrollable detail.
  */
 export function CreateScheduleProperties() {
   const ctx = useGenerate();
@@ -102,7 +119,19 @@ export function CreateScheduleProperties() {
     semesters,
     fixedAssignments,
     setFixedAssignments,
+    calendarHolidays,
+    subjectsInScope,
   } = ctx;
+
+  const workingDays = React.useMemo(
+    () => countWorkingDays(startDate, endDate, calendarHolidays || new Set()),
+    [startDate, endDate, calendarHolidays]
+  );
+
+  const selectedSemesters = React.useMemo(
+    () => (semesters || []).filter((s) => semesterIds.includes(s.id)),
+    [semesters, semesterIds]
+  );
 
   const toggleSemester = (id) => {
     setSemesterIds((prev) =>
@@ -116,98 +145,151 @@ export function CreateScheduleProperties() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-2.5">
+    <div className="flex flex-col h-full min-h-0">
+      {/* Stepper — always visible */}
+      <div className="shrink-0 rounded-xl border border-border/40 bg-muted/30 px-4 py-3 mb-4">
         <FormProgressStepper />
       </div>
-      <div className="rounded-2xl border border-border/60 bg-background p-4">
+
+      {/* Summary card — always visible, fills width */}
+      <div className="shrink-0 rounded-xl border-2 border-border/60 bg-card mb-4">
+        <div className="flex items-center gap-2 text-sm bg-muted font-semibold text-muted-foreground px-4 py-1.5 rounded-t-xl border-b border-border/60 mb-2">
+          <CalendarRange className="size-4" />
+          <span>Summary</span>
+        </div>
+        <dl className="grid grid-cols-1 gap-3 text-sm px-4 pb-4">
+          <div>
+            <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Batch</dt>
+            <dd className="font-medium text-foreground mt-0.5">
+              {cycle === "EVEN" ? "Even semesters (2, 4, 6, 8)" : "Odd semesters (1, 3, 5, 7)"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Date range</dt>
+            <dd className="font-medium text-foreground mt-0.5">
+              {startDate && endDate ? (
+                <span>{startDate} — {endDate}</span>
+              ) : (
+                <span className="text-muted-foreground italic">Select in calendar</span>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Semesters</dt>
+            <dd className="font-medium text-foreground mt-0.5">
+              {selectedSemesters.length > 0
+                ? selectedSemesters.map((s) => s.name).join(", ")
+                : <span className="text-muted-foreground italic">None selected</span>}
+            </dd>
+          </div>
+          {step === 2 && startDate && endDate && (
+            <>
+              <div>
+                <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Working days</dt>
+                <dd className="font-medium text-foreground mt-0.5">{workingDays} days</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Subjects in scope</dt>
+                <dd className="font-medium text-foreground mt-0.5">{subjectsInScope?.length ?? 0} subjects</dd>
+              </div>
+            </>
+          )}
+        </dl>
+      </div>
+
+      {/* Scrollable form / pre-assigned list */}
+      <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
         <AnimatePresence mode="wait">
           {step === 1 ? (
             <motion.div
               key="step1"
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              <div>
-                <Label className="block mb-2">Exam batch</Label>
-                <p className="text-xs text-muted-foreground mb-1">
-                  Exams are grouped by even or odd semester.
-                </p>
-                <Select value={cycle} onValueChange={setCycle}>
-                  <SelectTrigger className="w-full" aria-label="Exam batch">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CYCLES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="block mb-2">Semesters</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(semesters || []).map((s) => (
-                    <Label
-                      key={s.id}
-                      className="inline-flex items-center gap-2 cursor-pointer"
-                    >
-                      <Input
-                        type="checkbox"
-                        checked={semesterIds.includes(s.id)}
-                        onChange={() => toggleSemester(s.id)}
-                        className="rounded border-input w-4 h-4"
-                      />
-                      <span className="text-sm">{s.name}</span>
-                    </Label>
-                  ))}
+              <div className="rounded-xl border-2 border-border/60 bg-background">
+                <div className="flex items-center gap-2 text-sm bg-muted font-semibold text-muted-foreground px-4 py-1.5 rounded-t-xl border-b border-border/60 mb-2">
+                  <BookOpen className="size-4" />
+                  <span>Exam batch & semesters</span>
+                </div>
+                <div className="space-y-4 px-4 pb-4">
+                  <div>
+                    <Label className="block mb-2">Exam batch</Label>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Exams are grouped by even or odd semester.
+                    </p>
+                    <Select value={cycle} onValueChange={setCycle}>
+                      <SelectTrigger className="w-full" aria-label="Exam batch">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CYCLES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="block mb-2">Semesters</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(semesters || []).map((s) => (
+                        <Label
+                          key={s.id}
+                          className="inline-flex items-center gap-2 cursor-pointer"
+                        >
+                          <Input
+                            type="checkbox"
+                            checked={semesterIds.includes(s.id)}
+                            onChange={() => toggleSemester(s.id)}
+                            className="rounded border-input w-4 h-4"
+                          />
+                          <span className="text-sm">{s.name}</span>
+                        </Label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
           ) : (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 8 }}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.2 }}
               className="flex flex-col gap-4"
             >
-              <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
-                <p className="font-medium text-muted-foreground mb-1">Summary</p>
-                <p>
-                  Batch: {cycle === "EVEN" ? "Even semesters" : "Odd semesters"} ·{" "}
-                  {startDate} — {endDate} · Semesters:{" "}
-                  {(semesters || [])
-                    .filter((s) => semesterIds.includes(s.id))
-                    .map((s) => s.name)
-                    .join(", ")}
-                </p>
-              </div>
-              {fixedAssignments.length > 0 && (
-                <div className="rounded-lg border border-border bg-muted/20 p-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">
-                    Pre-assigned ({fixedAssignments.length})
-                  </p>
-                  <ul className="space-y-1 text-sm">
+              {fixedAssignments.length > 0 ? (
+                <div className="rounded-xl border-2 border-border/60 bg-background">
+                  <div className="flex items-center gap-2 text-sm bg-muted font-semibold text-muted-foreground px-4 py-1.5 rounded-t-xl border-b border-border/60 mb-2">
+                    <ListChecks className="size-4" />
+                    <span>Pre-assigned exams</span>
+                    <span className="ml-auto text-xs font-normal rounded-full bg-primary/10 text-primary px-2 py-0.5">
+                      {fixedAssignments.length}
+                    </span>
+                  </div>
+                  <ul className="space-y-2 px-2 pb-4">
                     {fixedAssignments.map((a, i) => (
                       <li
                         key={i}
-                        className="flex items-center justify-between gap-2"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-border/40 bg-muted/20 px-3 py-2 text-sm"
                       >
-                        <span>
-                          {a.date} {a.slot === "FORENOON" ? "FN" : "AN"}: {a.subjectCode}
+                        <span className="flex items-center gap-2 min-w-0">
+                          <Pin className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">
+                            {a.date} {a.slot === "FORENOON" ? "FN" : "AN"}: {a.subjectCode}
+                          </span>
                         </span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-muted-foreground hover:text-destructive"
+                          className="h-7 shrink-0 text-muted-foreground hover:text-destructive"
                           onClick={() => removeAssignment(i)}
                         >
                           Remove
@@ -215,6 +297,17 @@ export function CreateScheduleProperties() {
                       </li>
                     ))}
                   </ul>
+                  <p className="text-xs text-muted-foreground mt-2 px-4 pb-4">
+                    Click a weekday in the calendar to add more. Remove above to clear.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 p-6 text-center">
+                  <ListChecks className="size-8 mx-auto text-muted-foreground/60 mb-2" />
+                  <p className="text-sm font-medium text-foreground">No pre-assigned exams</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click a weekday in the calendar to assign a subject to a date and slot.
+                  </p>
                 </div>
               )}
             </motion.div>

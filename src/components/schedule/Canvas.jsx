@@ -14,6 +14,7 @@ import {
   CalendarOff,
   Minus,
   RotateCcw,
+  X,
 } from "lucide-react";
 import { useApp } from "./AppContext";
 import { CalendarView } from "./CalendarView";
@@ -22,6 +23,7 @@ import { GenerateProvider } from "./GenerateContext";
 import { SubjectsManager } from "./SubjectsManager";
 import { HolidaysManager } from "./HolidaysManager";
 import { VersionSelector } from "./VersionSelector";
+import { SlotCard } from "./SlotCard";
 import { cn } from "@/lib/utils";
 import {
   ResizablePanelGroup,
@@ -62,6 +64,19 @@ const NAV_ITEMS = [
 
 const SPRING = { type: "spring", stiffness: 170, damping: 26 };
 
+/** Panel enter animation: matches pan spring feel (~0.3s) */
+const PANEL_TRANSITION = { duration: 0.28, ease: [0.25, 0.1, 0.25, 1] };
+const LEFT_PANEL_ANIMATION = {
+  initial: { x: -24, opacity: 0 },
+  animate: { x: 0, opacity: 1 },
+  transition: PANEL_TRANSITION,
+};
+const RIGHT_PANEL_ANIMATION = {
+  initial: { x: 24, opacity: 0 },
+  animate: { x: 0, opacity: 1 },
+  transition: PANEL_TRANSITION,
+};
+
 const ZOOM_PRESETS = ["25", "50", "75", "100", "150", "200"];
 
 function clamp(min, max, val) {
@@ -87,6 +102,8 @@ export function Canvas() {
 
   const [dismissCreated, setDismissCreated] = React.useState(false);
   const [zoomPct, setZoomPct] = React.useState(100);
+  const [zoomStyle, setZoomStyle] = React.useState(1); // drive zoom from motion value so re-renders don't reset to 100%
+  const [selectedDay, setSelectedDay] = React.useState(null);
 
   // Canvas camera (transform offsets)
   const canvasX = useMotionValue(0);
@@ -113,6 +130,7 @@ export function Canvas() {
   useMotionValueEvent(canvasX, "change", syncBackground);
   useMotionValueEvent(canvasY, "change", syncBackground);
   useMotionValueEvent(zoom, "change", (z) => {
+    setZoomStyle(z);
     if (zoomContainerRef.current) zoomContainerRef.current.style.zoom = z;
     syncBackground();
     setZoomPct(Math.round(z * 100));
@@ -128,18 +146,23 @@ export function Canvas() {
   }, []);
 
   // Center the selected section in the canvas viewport (same when left or right panel is active)
+  // Use zoom from DOM when available so pan math matches rendered scale (fixes wrong pan when zoomed in)
   const panTo = React.useCallback(
     (sectionId, animated = true) => {
       const pos = SECTIONS[sectionId];
       if (!pos) return;
       const { w: vw, h: vh } = getViewportSize();
-      const currentZoom = zoom.get();
+      const zoomVal = zoomContainerRef.current?.style?.zoom;
+      const currentZoom = zoomVal != null && zoomVal !== ""
+        ? parseFloat(zoomVal)
+        : zoom.get();
+      const z = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : 1;
       const centerX = vw / 2;
       const centerY = vh / 2;
       const artboardCenterX = pos.x + ARTBOARD_W / 2;
       const artboardCenterY = pos.y + ARTBOARD_CENTER_Y;
-      const targetX = centerX - artboardCenterX * currentZoom;
-      const targetY = centerY - artboardCenterY * currentZoom;
+      const targetX = centerX - artboardCenterX * z;
+      const targetY = centerY - artboardCenterY * z;
 
       if (animated) {
         motionAnimate(canvasX, targetX, SPRING);
@@ -152,30 +175,33 @@ export function Canvas() {
     [canvasX, canvasY, zoom, getViewportSize]
   );
 
-  // Pan to section on activeSection change — double rAF so layout and viewport size are stable (fixes weird pan when zoomed)
+  // Pan to section on activeSection change — triple rAF so layout (and panel size) is stable before measuring viewport
   React.useEffect(() => {
     skipResizePanRef.current = true;
     let raf2 = null;
+    let raf3 = null;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        if (!viewportRef.current) {
+        raf3 = requestAnimationFrame(() => {
+          if (!viewportRef.current) {
+            skipResizePanRef.current = false;
+            return;
+          }
+          // Pan to center the selected section; keep current zoom (do not reset to 100%)
+          if (isInitialMount.current) {
+            isInitialMount.current = false;
+            panTo(activeSection, false);
+          } else {
+            panTo(activeSection, true);
+          }
           skipResizePanRef.current = false;
-          return;
-        }
-        // Nav section change: pan at 100% zoom
-        zoom.set(1);
-        if (isInitialMount.current) {
-          isInitialMount.current = false;
-          panTo(activeSection, false);
-        } else {
-          panTo(activeSection, true);
-        }
-        skipResizePanRef.current = false;
+        });
       });
     });
     return () => {
       cancelAnimationFrame(raf1);
       if (raf2 !== null) cancelAnimationFrame(raf2);
+      if (raf3 !== null) cancelAnimationFrame(raf3);
     };
   }, [activeSection, panTo]);
 
@@ -336,7 +362,8 @@ export function Canvas() {
   const showCreatedBanner = justCreated && !dismissCreated;
 
   const hasLeftPanel = activeSection === "schedules";
-  const hasPropertiesPanel = activeSection === "generate";
+  const hasPropertiesPanel =
+    activeSection === "generate" || (activeSection === "schedules" && selectedDay != null);
 
   const handleScheduleDelete = React.useCallback(
     (version) => {
@@ -351,7 +378,107 @@ export function Canvas() {
     if (activeSection === "generate") {
       return <CreateScheduleProperties />;
     }
+    if (activeSection === "schedules" && selectedDay != null) {
+      const daySlots = scheduleDetail?.examSlots?.filter((s) => s.date === selectedDay) ?? [];
+      const forenoon = daySlots.find((s) => s.slot === "FORENOON");
+      const afternoon = daySlots.find((s) => s.slot === "AFTERNOON");
+      const dateLabel = (() => {
+        try {
+          const d = new Date(selectedDay + "T12:00:00");
+          return d.toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+        } catch {
+          return selectedDay;
+        }
+      })();
+      return (
+        <div className="flex flex-col h-full min-h-0" data-interactive>
+          {/* Summary card */}
+          <div className="shrink-0 rounded-2xl border border-border/60 bg-card p-4 mb-4 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">{dateLabel}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {daySlots.length === 0
+                    ? "No exams on this day"
+                    : `${daySlots.length} exam${daySlots.length === 1 ? "" : "s"} (${forenoon ? "FN" : ""}${forenoon && afternoon ? " + " : ""}${afternoon ? "AN" : ""})`}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedDay(null)}
+                aria-label="Close day detail"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+          {/* Slot cards — fill remaining space */}
+          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto">
+            {daySlots.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 py-12 px-4 text-center">
+                <CalendarDays className="size-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm font-medium text-foreground">No exams on this day</p>
+                <p className="text-xs text-muted-foreground mt-1">Select another date from the calendar.</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Forenoon</p>
+                  {forenoon ? (
+                    <SlotCard
+                      subjectName={forenoon.subjectName}
+                      subjectCode={forenoon.subjectCode}
+                      semesterNumber={forenoon.semesterNumber}
+                      slot={forenoon.slot}
+                    />
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-muted-foreground/30 py-6 text-center text-muted-foreground text-sm">
+                      No forenoon exam
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Afternoon</p>
+                  {afternoon ? (
+                    <SlotCard
+                      subjectName={afternoon.subjectName}
+                      subjectCode={afternoon.subjectCode}
+                      semesterNumber={afternoon.semesterNumber}
+                      slot={afternoon.slot}
+                    />
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-muted-foreground/30 py-6 text-center text-muted-foreground text-sm">
+                      No afternoon exam
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
     return null;
+  };
+
+  const rightPanelHeader = () => {
+    if (activeSection === "schedules" && selectedDay != null) {
+      return {
+        title: "Day detail",
+        description: "Exams on this day",
+      };
+    }
+    if (activeSection === "generate") {
+      return { title: "Properties", description: "Create schedule" };
+    }
+    return { title: "Properties", description: "" };
   };
 
   const canvasViewport = (
@@ -368,7 +495,7 @@ export function Canvas() {
         style={{ x: canvasX, y: canvasY }}
         className="absolute will-change-transform origin-top-left"
       >
-        <div ref={zoomContainerRef} className="origin-top-left" style={{ zoom: 1 }}>
+        <div ref={zoomContainerRef} className="origin-top-left" style={{ zoom: zoomStyle }}>
           {/* ── Schedules artboard ── */}
           <Artboard pos={SECTIONS.schedules} label="Schedules" sectionId="schedules" isActive={activeSection === "schedules"} onSelect={setActiveSection}>
             {showCreatedBanner && (
@@ -401,7 +528,11 @@ export function Canvas() {
                 Loading schedule...
               </div>
             ) : scheduleDetail ? (
-              <CalendarView schedule={scheduleDetail} />
+              <CalendarView
+                schedule={scheduleDetail}
+                onDayClick={(iso) => setSelectedDay(iso)}
+                selectedDay={selectedDay}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">Select a schedule from the list.</p>
             )}
@@ -430,16 +561,17 @@ export function Canvas() {
     <>
       <div className="fixed inset-0 flex">
         <GenerateProvider semesters={semesters} onSuccess={handleGenerateSuccess}>
-          {hasLeftPanel ? (
+          {hasLeftPanel && hasPropertiesPanel ? (
             <ResizablePanelGroup
-              key="with-schedules-list"
+              key="with-schedules-and-detail"
               direction="horizontal"
               className="flex-1 min-h-0 z-0"
             >
               <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-r border-border flex flex-col">
-                <aside
+                <motion.aside
                   aria-label="Schedules list"
                   className="flex flex-col h-full overflow-hidden"
+                  {...LEFT_PANEL_ANIMATION}
                 >
                   <div className="p-4 border-b border-border shrink-0">
                     <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
@@ -454,7 +586,60 @@ export function Canvas() {
                       loading={versionsLoading}
                     />
                   </div>
-                </aside>
+                </motion.aside>
+              </ResizablePanel>
+              <ResizableHandle withHandle className="shrink-0 z-20" />
+              <ResizablePanel maxSize={(PANEL_MIN_PX * ARTBOARD_W) / 4} className="min-w-0">
+                {canvasViewport}
+              </ResizablePanel>
+              <ResizableHandle withHandle className="shrink-0 z-20" />
+              <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-l border-border flex flex-col">
+                <motion.aside
+                  aria-label="Properties"
+                  className="flex flex-col h-full overflow-hidden"
+                  {...RIGHT_PANEL_ANIMATION}
+                >
+                  <div className="p-4 border-b border-border shrink-0">
+                    <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
+                  </div>
+                  <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+                    <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
+                      {propertiesPanelContent()}
+                    </div>
+                  </div>
+                  {activeSection === "generate" && (
+                    <div ref={generateActionRef} className="p-4 pt-2 border-t border-border shrink-0" />
+                  )}
+                </motion.aside>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : hasLeftPanel ? (
+            <ResizablePanelGroup
+              key="with-schedules-list"
+              direction="horizontal"
+              className="flex-1 min-h-0 z-0"
+            >
+              <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-r border-border flex flex-col">
+                <motion.aside
+                  aria-label="Schedules list"
+                  className="flex flex-col h-full overflow-hidden"
+                  {...LEFT_PANEL_ANIMATION}
+                >
+                  <div className="p-4 border-b border-border shrink-0">
+                    <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
+                  </div>
+                  <div className="p-4 flex-1 overflow-y-auto min-h-0">
+                    <VersionSelector
+                      versions={versions}
+                      selectedId={selectedVersionId}
+                      onSelect={handleSelectVersion}
+                      onDelete={handleScheduleDelete}
+                      loading={versionsLoading}
+                    />
+                  </div>
+                </motion.aside>
               </ResizablePanel>
               <ResizableHandle withHandle className="shrink-0 z-20" />
               <ResizablePanel maxSize={(PANEL_MIN_PX * ARTBOARD_W) / 4} className="min-w-0">
@@ -472,19 +657,24 @@ export function Canvas() {
               </ResizablePanel>
               <ResizableHandle withHandle className="shrink-0 z-20" />
               <ResizablePanel defaultSize={PANEL_DEFAULT_PX} minSize={PANEL_MIN_PX} maxSize={PANEL_MAX_PX} className="z-10 min-w-0 bg-background border-l border-border flex flex-col">
-                <aside
+                <motion.aside
                   aria-label="Properties"
                   className="flex flex-col h-full overflow-hidden"
+                  {...RIGHT_PANEL_ANIMATION}
                 >
                   <div className="p-4 border-b border-border shrink-0">
-                    <h2 className="text-sm font-semibold text-foreground">Properties</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Create schedule</p>
+                    <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
                   </div>
-                  <div className="p-4 flex-1 overflow-y-auto min-h-0">
-                    {propertiesPanelContent()}
+                  <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+                    <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
+                      {propertiesPanelContent()}
+                    </div>
                   </div>
-                  <div ref={generateActionRef} className="p-4 pt-2 border-t border-border shrink-0" />
-                </aside>
+                  {activeSection === "generate" && (
+                    <div ref={generateActionRef} className="p-4 pt-2 border-t border-border shrink-0" />
+                  )}
+                </motion.aside>
               </ResizablePanel>
             </ResizablePanelGroup>
           ) : (
@@ -603,7 +793,7 @@ function Artboard({ pos, label, sectionId, isActive, onSelect, children }) {
       {/* Artboard content frame */}
       <div
         className={cn(
-          "rounded-2xl border bg-background shadow-sm p-6 transition-[border-color,box-shadow]",
+          "rounded-2xl border bg-background shadow-sm p-4 transition-[border-color,box-shadow]",
           isActive
             ? "border-primary/30 ring-2 ring-primary/10"
             : "border-border/60"

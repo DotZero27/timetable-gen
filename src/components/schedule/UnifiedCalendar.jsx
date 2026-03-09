@@ -31,6 +31,7 @@ import {
   getMonthGrid,
 } from "@/components/schedule/CalendarComposite";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 const SLOTS = [
   { value: "FORENOON", label: "Forenoon" },
@@ -141,6 +142,8 @@ export function UnifiedCalendar({
   subjects = [],
   fixedAssignments = [],
   onAdd,
+  onDayClick,
+  selectedDay,
   className,
 }) {
   const initialView = React.useMemo(() => {
@@ -286,13 +289,23 @@ export function UnifiedCalendar({
               const forenoon = daySlots.FORENOON;
               const afternoon = daySlots.AFTERNOON;
               const hasExams = forenoon || afternoon;
+              const isSelected = selectedDay === iso;
+              const Comp = onDayClick ? "button" : "div";
               return (
-                <div
+                <Comp
                   key={iso}
-                  className={calendarDayCellStyles({
-                    isWeekend,
-                    hasHighlight: hasExams,
-                  })}
+                  type={onDayClick ? "button" : undefined}
+                  onClick={onDayClick ? (e) => { e.stopPropagation(); onDayClick(iso); } : undefined}
+                  data-interactive={onDayClick ? true : undefined}
+                  className={cn(
+                    calendarDayCellStyles({
+                      isWeekend,
+                      hasHighlight: hasExams || isSelected,
+                    }),
+                    onDayClick && "cursor-pointer text-left transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-inset",
+                    isSelected && "ring-2 ring-primary ring-inset bg-primary/15"
+                  )}
+                  aria-label={onDayClick ? `View exams for ${iso}` : undefined}
                 >
                   <span
                     className={cn(
@@ -318,7 +331,7 @@ export function UnifiedCalendar({
                       AN: {afternoon.subjectCode}
                     </div>
                   )}
-                </div>
+                </Comp>
               );
             }
 
@@ -470,20 +483,20 @@ export function UnifiedCalendar({
               <p className="text-sm">
                 <span className="font-medium">Range: </span>
                 <span className="text-muted-foreground">
-                  {startDate}
-                  {endDate ? ` — ${endDate}` : " (click end date)"}
+                  {format(new Date(startDate), "dd MMM yyyy")}
+                  {endDate ? ` — ${format(new Date(endDate), "dd MMM yyyy")}` : "- (click end date)"}
                 </span>
               </p>
             )}
           </>
         )}
         {mode === "assign" && startDate && endDate && (
-          <p className="text-sm">
-            <span className="font-medium">Range: </span>
+          <div className="text-sm">
+            <div className="font-medium">Examination Range: </div>
             <span className="text-muted-foreground">
-              {startDate} — {endDate}
+              {format(new Date(startDate), "dd MMM yyyy")} - {format(new Date(endDate), "dd MMM yyyy")}
             </span>
-          </p>
+          </div>
         )}
       </div>
 
