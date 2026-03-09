@@ -17,7 +17,7 @@ export function SlotCard({ subjectName, subjectCode, semesterNumber, slot, class
       transition={{ duration: 0.2 }}
       className={cn("w-full", className)}
     >
-      <Card className="py-2 px-3">
+      <Card className="py-2 px-3 shadow-none">
         <CardContent className="p-0 flex flex-col gap-1">
           <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
             {slot}

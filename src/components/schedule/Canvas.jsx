@@ -15,6 +15,8 @@ import {
   Minus,
   RotateCcw,
   X,
+  PanelLeftOpen,
+  PanelRightOpen,
 } from "lucide-react";
 import { useApp } from "./AppContext";
 import { CalendarView } from "./CalendarView";
@@ -104,6 +106,8 @@ export function Canvas() {
   const [zoomPct, setZoomPct] = React.useState(100);
   const [zoomStyle, setZoomStyle] = React.useState(1); // drive zoom from motion value so re-renders don't reset to 100%
   const [selectedDay, setSelectedDay] = React.useState(null);
+  const [leftPanelOpen, setLeftPanelOpen] = React.useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = React.useState(true);
 
   // Canvas camera (transform offsets)
   const canvasX = useMotionValue(0);
@@ -231,6 +235,20 @@ export function Canvas() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [activeSection, panTo]);
+
+  // Recenter when panel open/close changes (viewport resizes); double rAF so layout has settled
+  React.useEffect(() => {
+    let raf2 = null;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (viewportRef.current) panTo(activeSection, false);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== null) cancelAnimationFrame(raf2);
+    };
+  }, [leftPanelOpen, rightPanelOpen, activeSection, panTo]);
 
   // Reset dismissCreated when justCreated changes
   React.useEffect(() => {
@@ -364,6 +382,8 @@ export function Canvas() {
   const hasLeftPanel = activeSection === "schedules";
   const hasPropertiesPanel =
     activeSection === "generate" || (activeSection === "schedules" && selectedDay != null);
+  const leftPanelRendered = hasLeftPanel && leftPanelOpen;
+  const rightPanelRendered = hasPropertiesPanel && rightPanelOpen;
 
   const handleScheduleDelete = React.useCallback(
     (version) => {
@@ -398,7 +418,7 @@ export function Canvas() {
       return (
         <div className="flex flex-col h-full min-h-0" data-interactive>
           {/* Summary card */}
-          <div className="shrink-0 rounded-2xl border border-border/60 bg-card p-4 mb-4 shadow-sm">
+          <div className="shrink-0 rounded-2xl border border-border/60 bg-card p-4 mb-4">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-medium text-foreground">{dateLabel}</p>
@@ -561,7 +581,7 @@ export function Canvas() {
     <>
       <div className="fixed inset-0 flex">
         <GenerateProvider semesters={semesters} onSuccess={handleGenerateSuccess}>
-          {hasLeftPanel && hasPropertiesPanel ? (
+          {leftPanelRendered && rightPanelRendered ? (
             <ResizablePanelGroup
               key="with-schedules-and-detail"
               direction="horizontal"
@@ -573,9 +593,20 @@ export function Canvas() {
                   className="flex flex-col h-full overflow-hidden"
                   {...LEFT_PANEL_ANIMATION}
                 >
-                  <div className="p-4 border-b border-border shrink-0">
-                    <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
+                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setLeftPanelOpen(false)}
+                      aria-label="Close panel"
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
                   <div className="p-4 flex-1 overflow-y-auto min-h-0">
                     <VersionSelector
@@ -599,9 +630,20 @@ export function Canvas() {
                   className="flex flex-col h-full overflow-hidden"
                   {...RIGHT_PANEL_ANIMATION}
                 >
-                  <div className="p-4 border-b border-border shrink-0">
-                    <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
+                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setRightPanelOpen(false)}
+                      aria-label="Close panel"
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
                   <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
@@ -614,7 +656,7 @@ export function Canvas() {
                 </motion.aside>
               </ResizablePanel>
             </ResizablePanelGroup>
-          ) : hasLeftPanel ? (
+          ) : leftPanelRendered ? (
             <ResizablePanelGroup
               key="with-schedules-list"
               direction="horizontal"
@@ -626,9 +668,20 @@ export function Canvas() {
                   className="flex flex-col h-full overflow-hidden"
                   {...LEFT_PANEL_ANIMATION}
                 >
-                  <div className="p-4 border-b border-border shrink-0">
-                    <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
+                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Choose a schedule to view or delete</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setLeftPanelOpen(false)}
+                      aria-label="Close panel"
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
                   <div className="p-4 flex-1 overflow-y-auto min-h-0">
                     <VersionSelector
@@ -646,7 +699,7 @@ export function Canvas() {
                 {canvasViewport}
               </ResizablePanel>
             </ResizablePanelGroup>
-          ) : hasPropertiesPanel ? (
+          ) : rightPanelRendered ? (
             <ResizablePanelGroup
               key="with-properties"
               direction="horizontal"
@@ -662,9 +715,20 @@ export function Canvas() {
                   className="flex flex-col h-full overflow-hidden"
                   {...RIGHT_PANEL_ANIMATION}
                 >
-                  <div className="p-4 border-b border-border shrink-0">
-                    <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
+                  <div className="p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-semibold text-foreground">{rightPanelHeader().title}</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">{rightPanelHeader().description}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setRightPanelOpen(false)}
+                      aria-label="Close panel"
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
                   <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-4">
@@ -686,6 +750,33 @@ export function Canvas() {
       </div>
 
       {/* ── Fixed UI layer (outside canvas transform) ── */}
+
+      {/* Left edge: reopen schedules panel when closed */}
+      {hasLeftPanel && !leftPanelOpen && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          onClick={() => setLeftPanelOpen(true)}
+          aria-label="Open schedules panel"
+          className="fixed left-0 top-1/2 z-40 -translate-y-1/2 rounded-r-lg rounded-l-none border border-r-0 border-border bg-background/95 backdrop-blur-md shadow-lg hover:bg-muted"
+        >
+          <PanelLeftOpen className="size-4" />
+        </Button>
+      )}
+      {/* Right edge: reopen properties panel when closed */}
+      {hasPropertiesPanel && !rightPanelOpen && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          onClick={() => setRightPanelOpen(true)}
+          aria-label="Open properties panel"
+          className="fixed right-0 top-1/2 z-40 -translate-y-1/2 rounded-l-lg rounded-r-none border border-l-0 border-border bg-background/95 backdrop-blur-md shadow-lg hover:bg-muted"
+        >
+          <PanelRightOpen className="size-4" />
+        </Button>
+      )}
 
       {/* Center-bottom: nav pill + zoom controls */}
       <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2">
