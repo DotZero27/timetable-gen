@@ -50,6 +50,9 @@ const PANEL_MIN_PX = 320;
 const PANEL_MAX_PX = 560;
 const PANEL_DEFAULT_PX = 400;
 
+/** Nudge section toward center when left panel is open (Schedules). Applied only for sections with left panel. */
+const LEFT_PANEL_CENTER_OFFSET_X = 24;
+
 const SECTIONS = {
   schedules: { x: 0, y: 0, label: "Schedules" },
   generate: { x: ARTBOARD_W + GAP, y: 0, label: "Create Schedule" },
@@ -126,6 +129,7 @@ export function Canvas() {
   const dragStart = React.useRef({ x: 0, y: 0, cx: 0, cy: 0 });
   const skipResizePanRef = React.useRef(false);
   const sectionChangeInProgressRef = React.useRef(false);
+  const skipSyncExpandRef = React.useRef(false);
   const resizeRafRef = React.useRef(null);
   const leftPanelRef = React.useRef(null);
   const rightPanelRef = React.useRef(null);
@@ -158,9 +162,10 @@ export function Canvas() {
   }, []);
 
   // Center the selected section in the canvas viewport (same when left or right panel is active)
-  // Use zoom from DOM when available so pan math matches rendered scale (fixes wrong pan when zoomed in)
+  // Use zoom from DOM when available so pan math matches rendered scale (fixes wrong pan when zoomed in).
+  // options.centerOffsetX: nudge target X (e.g. when left panel is open) so section sits slightly more toward center.
   const panTo = React.useCallback(
-    (sectionId, animated = true) => {
+    (sectionId, animated = true, options = {}) => {
       const pos = SECTIONS[sectionId];
       if (!pos) return Promise.resolve();
       const { w: vw, h: vh } = getViewportSize();
@@ -173,8 +178,9 @@ export function Canvas() {
       const centerY = vh / 2;
       const artboardCenterX = pos.x + ARTBOARD_W / 2;
       const artboardCenterY = pos.y + ARTBOARD_CENTER_Y;
-      const targetX = centerX - artboardCenterX * z;
+      let targetX = centerX - artboardCenterX * z;
       const targetY = centerY - artboardCenterY * z;
+      if (options.centerOffsetX != null) targetX += options.centerOffsetX;
 
       if (animated) {
         return Promise.all([
@@ -210,31 +216,34 @@ export function Canvas() {
           if (isInitialMount.current) {
             isInitialMount.current = false;
             setLayoutSection(section);
-            panTo(section, false);
+            panTo(section, false, section === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {});
             skipResizePanRef.current = false;
             return;
           }
           sectionChangeInProgressRef.current = true;
-          // Close current section's panels by using a section that has no side panels
-          setLayoutSection("subjects");
-          // Wait for collapse to take effect, then pan to destination
-          raf4 = requestAnimationFrame(() => {
+          const isLeftPanelSection = section === "schedules";
+          const willHaveLeft = section === "schedules";
+          const willHaveRight = section === "generate" || (section === "schedules" && selectedDay != null);
+
+          if (isLeftPanelSection) {
+            // Left-panel section: open panel first, then smooth pan the section into place (no viewport shift during pan).
+            setLayoutSection("subjects");
             raf4 = requestAnimationFrame(() => {
-              panTo(section, true).then(() => {
-                if (activeSectionRef.current !== section) {
-                  skipResizePanRef.current = false;
-                  sectionChangeInProgressRef.current = false;
-                  return;
-                }
-                // Open panels only after we have reached the section: wait one frame so the arrival is painted, then set layout
+              raf4 = requestAnimationFrame(() => {
+                skipSyncExpandRef.current = true;
+                setLeftPanelOpen(true);
+                setRightPanelOpen(true);
+                setPanelAnimKey((k) => k + 1);
+                setLayoutSection(section);
                 raf5 = requestAnimationFrame(() => {
-                  setLeftPanelOpen(true);
-                  setRightPanelOpen(true);
-                  setPanelAnimKey((k) => k + 1);
-                  setLayoutSection(section);
-                  // Keep skipResizePanRef true; after panels expand and layout settles, do one smooth recenter then clear refs
-                  raf6 = requestAnimationFrame(() => {
-                    panTo(activeSectionRef.current, true).then(() => {
+                  raf5 = requestAnimationFrame(() => {
+                    if (willHaveLeft) leftPanelRef.current?.expand();
+                    else leftPanelRef.current?.collapse();
+                    if (willHaveRight) rightPanelRef.current?.expand();
+                    else rightPanelRef.current?.collapse();
+                    void viewportRef.current?.getBoundingClientRect();
+                    skipSyncExpandRef.current = false;
+                    panTo(section, true, { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X }).then(() => {
                       skipResizePanRef.current = false;
                       sectionChangeInProgressRef.current = false;
                     });
@@ -242,7 +251,39 @@ export function Canvas() {
                 });
               });
             });
-          });
+          } else {
+            // Right-panel or no-panel sections: close → pan → open panels → set canvas to center.
+            setLayoutSection("subjects");
+            raf4 = requestAnimationFrame(() => {
+              raf4 = requestAnimationFrame(() => {
+                panTo(section, true).then(() => {
+                  if (activeSectionRef.current !== section) {
+                    skipResizePanRef.current = false;
+                    sectionChangeInProgressRef.current = false;
+                    return;
+                  }
+                  raf5 = requestAnimationFrame(() => {
+                    skipSyncExpandRef.current = true;
+                    setLeftPanelOpen(true);
+                    setRightPanelOpen(true);
+                    setPanelAnimKey((k) => k + 1);
+                    setLayoutSection(section);
+                    raf6 = requestAnimationFrame(() => {
+                      if (willHaveLeft) leftPanelRef.current?.expand();
+                      else leftPanelRef.current?.collapse();
+                      if (willHaveRight) rightPanelRef.current?.expand();
+                      else rightPanelRef.current?.collapse();
+                      void viewportRef.current?.getBoundingClientRect();
+                      panTo(activeSectionRef.current, false);
+                      skipSyncExpandRef.current = false;
+                      skipResizePanRef.current = false;
+                      sectionChangeInProgressRef.current = false;
+                    });
+                  });
+                });
+              });
+            });
+          }
         });
       });
     });
@@ -265,7 +306,8 @@ export function Canvas() {
       resizeRafRef.current = requestAnimationFrame(() => {
         resizeRafRef.current = null;
         if (skipResizePanRef.current || sectionChangeInProgressRef.current) return;
-        panTo(activeSection, true);
+        const opts = activeSection === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {};
+        panTo(activeSection, true, opts);
       });
     };
     const ro = new ResizeObserver(handleResize);
@@ -278,7 +320,10 @@ export function Canvas() {
 
   // Also recenter on window resize (e.g. browser window resize)
   React.useEffect(() => {
-    const handleResize = () => panTo(activeSection, false);
+    const handleResize = () => {
+      const opts = activeSection === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {};
+      panTo(activeSection, false, opts);
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [activeSection, panTo]);
@@ -289,7 +334,10 @@ export function Canvas() {
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         if (sectionChangeInProgressRef.current) return;
-        if (viewportRef.current) panTo(activeSection, true);
+        if (viewportRef.current) {
+          const opts = activeSection === "schedules" ? { centerOffsetX: LEFT_PANEL_CENTER_OFFSET_X } : {};
+          panTo(activeSection, true, opts);
+        }
       });
     });
     return () => {
@@ -441,9 +489,11 @@ export function Canvas() {
     return { left, center, right };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: only use initial state for first paint
 
-  // Sync panel open/close state with collapse/expand so we don't unmount the tree
+  // Sync panel open/close state with collapse/expand so we don't unmount the tree.
+  // Skipped during the expand phase of a section change (handled manually with canvasX compensation).
   React.useEffect(() => {
     const raf = requestAnimationFrame(() => {
+      if (skipSyncExpandRef.current) return;
       if (hasLeftPanel && leftPanelOpen) {
         leftPanelRef.current?.expand();
       } else {
