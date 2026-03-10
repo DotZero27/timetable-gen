@@ -96,7 +96,7 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
             fixedAssignments: fixedAssignments.map((a) => ({
               date: a.date,
               slot: a.slot,
-              subjectId: a.subjectId,
+              subjectCode: a.subjectCode,
             })),
           }),
         });
@@ -114,6 +114,13 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
           return;
         }
         onSuccess?.(data.versionId, data);
+        setStep(1);
+        setStartDate("");
+        setEndDate("");
+        setSemesterIds([]);
+        setFixedAssignments([]);
+        setError(null);
+        setRule(null);
       } catch (err) {
         setError(err.message || "Network error");
       } finally {

@@ -22,13 +22,12 @@ export async function GET(request, { params }) {
         id: examSlots.id,
         date: examSlots.date,
         slot: examSlots.slot,
-        subjectId: examSlots.subjectId,
-        subjectCode: subjects.code,
+        subjectCode: examSlots.subjectCode,
         subjectName: subjects.name,
         semesterNumber: semesters.semesterNumber,
       })
       .from(examSlots)
-      .innerJoin(subjects, eq(examSlots.subjectId, subjects.id))
+      .innerJoin(subjects, eq(examSlots.subjectCode, subjects.code))
       .innerJoin(semesters, eq(subjects.semesterId, semesters.id))
       .where(eq(examSlots.scheduleVersionId, versionId))
       .orderBy(asc(examSlots.date), asc(examSlots.slot));

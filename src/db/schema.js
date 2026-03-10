@@ -11,8 +11,7 @@ export const semesters = sqliteTable("semesters", {
 });
 
 export const subjects = sqliteTable("subjects", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  code: text("code").notNull(),
+  code: text("code").primaryKey(),
   name: text("name").notNull(),
   semesterId: integer("semester_id")
     .notNull()
@@ -42,8 +41,8 @@ export const examSlots = sqliteTable(
       .references(() => scheduleVersions.id),
     date: text("date").notNull(),
     slot: text("slot", { enum: ["FORENOON", "AFTERNOON"] }).notNull(),
-    subjectId: integer("subject_id")
+    subjectCode: text("subject_code")
       .notNull()
-      .references(() => subjects.id),
+      .references(() => subjects.code),
   }
 );

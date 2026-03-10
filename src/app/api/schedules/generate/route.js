@@ -7,7 +7,7 @@ import { generate } from "@/lib/schedule/generator";
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { cycle, startDate, endDate, subjectIds, semesterIds, fixedAssignments: rawFixed } = body;
+    const { cycle, startDate, endDate, subjectCodes, semesterIds, fixedAssignments: rawFixed } = body;
 
     if (!cycle || !startDate || !endDate) {
       return NextResponse.json(
@@ -22,20 +22,20 @@ export async function POST(request) {
     const db = getDb();
 
     let subjectList;
-    if (Array.isArray(subjectIds) && subjectIds.length > 0) {
+    if (Array.isArray(subjectCodes) && subjectCodes.length > 0) {
       const rows = await db
         .select({
-          id: subjects.id,
+          code: subjects.code,
           semesterNumber: semesters.semesterNumber,
         })
         .from(subjects)
         .innerJoin(semesters, eq(subjects.semesterId, semesters.id))
-        .where(inArray(subjects.id, subjectIds));
+        .where(inArray(subjects.code, subjectCodes));
       subjectList = rows;
     } else if (Array.isArray(semesterIds) && semesterIds.length > 0) {
       const rows = await db
         .select({
-          id: subjects.id,
+          code: subjects.code,
           semesterNumber: semesters.semesterNumber,
         })
         .from(subjects)
@@ -44,7 +44,7 @@ export async function POST(request) {
       subjectList = rows;
     } else {
       return NextResponse.json(
-        { error: "Provide subjectIds or semesterIds" },
+        { error: "Provide subjectCodes or semesterIds" },
         { status: 400 }
       );
     }
@@ -56,18 +56,18 @@ export async function POST(request) {
       );
     }
 
-    const subjectIdsInScope = new Set(subjectList.map((s) => s.id));
+    const subjectCodesInScope = new Set(subjectList.map((s) => s.code));
     let fixedAssignments = [];
     if (Array.isArray(rawFixed) && rawFixed.length > 0) {
       for (const fa of rawFixed) {
-        const { date, slot, subjectId } = fa;
-        if (!date || !slot || !subjectId || !subjectIdsInScope.has(Number(subjectId))) continue;
-        const sub = subjectList.find((s) => s.id === Number(subjectId));
+        const { date, slot, subjectCode } = fa;
+        if (!date || !slot || !subjectCode || !subjectCodesInScope.has(String(subjectCode))) continue;
+        const sub = subjectList.find((s) => s.code === subjectCode);
         if (sub) {
           fixedAssignments.push({
             date: String(date).slice(0, 10),
             slot: slot === "AFTERNOON" ? "AFTERNOON" : "FORENOON",
-            subjectId: sub.id,
+            subjectCode: sub.code,
             semesterNumber: sub.semesterNumber,
           });
         }
@@ -81,7 +81,7 @@ export async function POST(request) {
     const holidayDates = new Set(holidayRows.map((r) => r.date));
 
     const exams = subjectList.map((s) => ({
-      subjectId: s.id,
+      subjectCode: s.code,
       semesterNumber: s.semesterNumber,
     }));
 
@@ -125,7 +125,7 @@ export async function POST(request) {
         scheduleVersionId: versionId,
         date: entry.date,
         slot: entry.slot,
-        subjectId: entry.subjectId,
+        subjectCode: entry.subjectCode,
       });
     }
 

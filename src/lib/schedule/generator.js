@@ -8,7 +8,7 @@ import { validateSchedule } from "./validate.js";
 
 /**
  * @typedef {Object} ExamInput
- * @property {number} subjectId
+ * @property {string} subjectCode
  * @property {number} semesterNumber
  */
 
@@ -16,7 +16,7 @@ import { validateSchedule } from "./validate.js";
  * @typedef {Object} FixedAssignment
  * @property {string} date - YYYY-MM-DD
  * @property {"FORENOON" | "AFTERNOON"} slot
- * @property {number} subjectId
+ * @property {string} subjectCode
  * @property {number} semesterNumber
  */
 
@@ -34,7 +34,7 @@ import { validateSchedule } from "./validate.js";
  * @typedef {Object} ScheduleEntry
  * @property {string} date
  * @property {"FORENOON" | "AFTERNOON"} slot
- * @property {number} subjectId
+ * @property {string} subjectCode
  * @property {number} semesterNumber
  */
 
@@ -83,16 +83,16 @@ export function generate(input) {
   } = input;
 
   const schedule = [];
-  const assignedSubjectIds = new Set();
+  const assignedSubjectCodes = new Set();
 
   for (const fa of fixedAssignments) {
     schedule.push({
       date: fa.date,
       slot: fa.slot,
-      subjectId: fa.subjectId,
+      subjectCode: fa.subjectCode,
       semesterNumber: fa.semesterNumber,
     });
-    assignedSubjectIds.add(fa.subjectId);
+    assignedSubjectCodes.add(fa.subjectCode);
     const v = validateSchedule(schedule, cycle, holidayDates);
     if (!v.success) return { success: false, rule: v.rule, message: v.message };
   }
@@ -104,7 +104,7 @@ export function generate(input) {
   const forenoonQueue = [];
   const afternoonQueue = [];
   for (const e of exams) {
-    if (assignedSubjectIds.has(e.subjectId)) continue;
+    if (assignedSubjectCodes.has(e.subjectCode)) continue;
     const parity = getParity(e.semesterNumber);
     if (parity === cycle) {
       forenoonQueue.push(e);
@@ -113,7 +113,7 @@ export function generate(input) {
     }
   }
 
-  const sortKey = (e) => [e.semesterNumber, e.subjectId].join(",");
+  const sortKey = (e) => [e.semesterNumber, e.subjectCode].join(",");
   forenoonQueue.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   afternoonQueue.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
 
@@ -132,7 +132,7 @@ export function generate(input) {
       schedule.push({
         date,
         slot: "FORENOON",
-        subjectId: exam.subjectId,
+        subjectCode: exam.subjectCode,
         semesterNumber: exam.semesterNumber,
       });
       usedDateSlots.add(forenoonKey);
@@ -145,7 +145,7 @@ export function generate(input) {
       schedule.push({
         date,
         slot: "AFTERNOON",
-        subjectId: exam.subjectId,
+        subjectCode: exam.subjectCode,
         semesterNumber: exam.semesterNumber,
       });
       usedDateSlots.add(afternoonKey);

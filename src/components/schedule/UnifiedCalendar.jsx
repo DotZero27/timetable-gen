@@ -48,35 +48,34 @@ function buildByDate(examSlots) {
 }
 
 function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose }) {
-  const [subjectId, setSubjectId] = React.useState("");
+  const [subjectCode, setSubjectCode] = React.useState("");
   const [slot, setSlot] = React.useState("FORENOON");
 
   const used = React.useMemo(() => {
     const set = new Set();
     for (const a of fixedAssignments) {
-      if (a.date === date) set.add(`${a.slot}:${a.subjectId}`);
+      if (a.date === date) set.add(`${a.slot}:${a.subjectCode}`);
     }
     return set;
   }, [date, fixedAssignments]);
 
-  const assignedSubjectIds = React.useMemo(
-    () => new Set((fixedAssignments || []).map((a) => a.subjectId)),
+  const assignedSubjectCodes = React.useMemo(
+    () => new Set((fixedAssignments || []).map((a) => a.subjectCode)),
     [fixedAssignments]
   );
 
   const handleSubmit = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!subjectId) return;
-    if (assignedSubjectIds.has(Number(subjectId))) return;
-    const key = `${slot}:${subjectId}`;
+    if (!subjectCode) return;
+    if (assignedSubjectCodes.has(subjectCode)) return;
+    const key = `${slot}:${subjectCode}`;
     if (used.has(key)) return;
-    const sub = subjects.find((s) => s.id === Number(subjectId));
+    const sub = subjects.find((s) => s.code === subjectCode);
     if (!sub) return;
     onAdd({
       date,
       slot,
-      subjectId: sub.id,
       subjectCode: sub.code,
       subjectName: sub.name,
     });
@@ -90,7 +89,7 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
     return false;
   };
 
-  const isSubjectAlreadyAssigned = (id) => assignedSubjectIds.has(id);
+  const isSubjectAlreadyAssigned = (code) => assignedSubjectCodes.has(code);
 
   return (
     <form onSubmit={handleSubmit} className="mt-3 space-y-3" noValidate>
@@ -100,17 +99,17 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
       </div>
       <div>
         <Label className="block mb-1">Subject</Label>
-        <Select value={subjectId || undefined} onValueChange={setSubjectId}>
+        <Select value={subjectCode || undefined} onValueChange={setSubjectCode}>
           <SelectTrigger className="w-full" aria-label="Select subject">
             <SelectValue placeholder="Select subject" />
           </SelectTrigger>
           <SelectContent>
             {subjects.map((s) => {
-              const alreadyAssigned = isSubjectAlreadyAssigned(s.id);
+              const alreadyAssigned = isSubjectAlreadyAssigned(s.code);
               return (
                 <SelectItem
-                  key={s.id}
-                  value={String(s.id)}
+                  key={s.code}
+                  value={s.code}
                   disabled={alreadyAssigned}
                 >
                   {s.code} — {s.name}
@@ -137,7 +136,7 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" size="sm" disabled={!subjectId || isSubjectAlreadyAssigned(Number(subjectId))}>
+      <Button type="submit" size="sm" disabled={!subjectCode || isSubjectAlreadyAssigned(subjectCode)}>
         Add
       </Button>
     </form>
@@ -372,8 +371,8 @@ export function UnifiedCalendar({
                     !isStart &&
                     !isEnd &&
                     "bg-destructive/10 text-destructive/80",
-                    inRange && "bg-primary/10",
-                    (isStart || isEnd) && "bg-primary/50 font-semibold",
+                    inRange && "bg-primary/5",
+                    (isStart || isEnd) && "bg-primary font-semibold",
                     (isStart || isEnd) && "ring-2 ring-primary/40 ring-inset"
                   )}
                   title={

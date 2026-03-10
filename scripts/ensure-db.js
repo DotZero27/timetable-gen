@@ -17,8 +17,7 @@ const DDL = [
     semester_number INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS subjects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT NOT NULL,
+    code TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     semester_id INTEGER NOT NULL REFERENCES semesters(id)
   )`,
@@ -39,7 +38,7 @@ const DDL = [
     schedule_version_id INTEGER NOT NULL REFERENCES schedule_versions(id),
     date TEXT NOT NULL,
     slot TEXT NOT NULL CHECK(slot IN ('FORENOON', 'AFTERNOON')),
-    subject_id INTEGER NOT NULL REFERENCES subjects(id),
+    subject_code TEXT NOT NULL REFERENCES subjects(code),
     UNIQUE(schedule_version_id, date, slot)
   )`,
 ];
@@ -56,22 +55,6 @@ function ensureDb() {
   for (const sql of DDL) {
     sqlite.run(sql);
   }
-
-  // Migrate: drop subject_type if present (SQLite 3.35+)
-  try {
-    const info = sqlite.prepare("PRAGMA table_info(subjects)").all();
-    if (info.some((col) => col.name === "subject_type")) {
-      sqlite.run("ALTER TABLE subjects RENAME TO subjects_old");
-      sqlite.run(`CREATE TABLE subjects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        code TEXT NOT NULL,
-        name TEXT NOT NULL,
-        semester_id INTEGER NOT NULL REFERENCES semesters(id)
-      )`);
-      sqlite.run("INSERT INTO subjects (id, code, name, semester_id) SELECT id, code, name, semester_id FROM subjects_old");
-      sqlite.run("DROP TABLE subjects_old");
-    }
-  } catch (_) {}
 
   // Seed 8 semesters (4 years) if empty
   const count = sqlite.prepare("SELECT COUNT(*) as n FROM semesters").get();

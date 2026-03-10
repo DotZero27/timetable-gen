@@ -13,7 +13,7 @@ const WEEKEND_SUN = 0;
  * @typedef {Object} ScheduleEntry
  * @property {string} date - ISO date YYYY-MM-DD
  * @property {"FORENOON" | "AFTERNOON"} slot
- * @property {number} subjectId
+ * @property {string} subjectCode
  * @property {number} semesterNumber
  */
 

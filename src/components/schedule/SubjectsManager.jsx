@@ -193,7 +193,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                     const sem = semesters.find((s) => s.id === sub.semesterId);
                     return (
                       <motion.tr
-                        key={sub.id}
+                        key={sub.code}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="border-b last:border-0"
