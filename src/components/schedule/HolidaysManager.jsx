@@ -7,63 +7,44 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useHolidays } from "@/hooks/useHolidays";
+import { useAddHoliday } from "@/hooks/useAddHoliday";
 
 /**
  * Composite: form to add a date (holiday or event) + list of holidays/dates.
  * Uses GET/POST /api/holidays. These dates are excluded from exam scheduling (rule 7).
  */
 export function HolidaysManager({ className }) {
-  const [holidays, setHolidays] = React.useState([]);
-  const [listLoading, setListLoading] = React.useState(true);
-  const [loading, setLoading] = React.useState(false);
   const [date, setDate] = React.useState("");
   const [label, setLabel] = React.useState("");
   const [error, setError] = React.useState(null);
 
-  const loadHolidays = React.useCallback(() => {
-    setListLoading(true);
-    fetch("/api/holidays")
-      .then((r) => r.json())
-      .then((data) => setHolidays(Array.isArray(data) ? data : []))
-      .catch(() => setHolidays([]))
-      .finally(() => setListLoading(false));
-  }, []);
+  const { data: holidays, isLoading: listLoading } = useHolidays();
+  const { mutate: addHolidayMutate, isPending } = useAddHoliday();
 
-  React.useEffect(() => {
-    loadHolidays();
-  }, [loadHolidays]);
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError(null);
     if (!date) {
       setError("Date is required.");
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/holidays", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, label: label.trim() || null }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to add date");
-        return;
+    addHolidayMutate(
+      { date, label: label.trim() || null },
+      {
+        onSuccess: () => {
+          setDate("");
+          setLabel("");
+        },
+        onError: (err) => {
+          setError(err.message || "Failed to add date");
+        },
       }
-      setDate("");
-      setLabel("");
-      loadHolidays();
-    } catch (err) {
-      setError(err.message || "Failed to add date");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const sortedHolidays = React.useMemo(
-    () => [...holidays].sort((a, b) => (a.date || "").localeCompare(b.date || "")),
+    () => [...(holidays ?? [])].sort((a, b) => (a.date || "").localeCompare(b.date || "")),
     [holidays]
   );
 
@@ -104,8 +85,8 @@ export function HolidaysManager({ className }) {
                 className="w-full"
               />
             </div>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Adding…" : "Add date"}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Adding…" : "Add date"}
             </Button>
           </form>
         </CardContent>

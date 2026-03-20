@@ -1,6 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useSchedules } from "@/hooks/useSchedules";
+import { useSemesters } from "@/hooks/useSemesters";
+import { useScheduleDetail } from "@/hooks/useScheduleDetail";
+import { useDeleteSchedule } from "@/hooks/useDeleteSchedule";
 
 const AppContext = React.createContext(null);
 
@@ -12,85 +16,37 @@ export function useApp() {
 
 export function AppProvider({ children }) {
   const [activeSection, setActiveSection] = React.useState("schedules");
-  const [versions, setVersions] = React.useState([]);
-  const [versionsLoading, setVersionsLoading] = React.useState(true);
-  const [semesters, setSemesters] = React.useState([]);
   const [selectedVersionId, setSelectedVersionId] = React.useState(null);
-  const [scheduleDetail, setScheduleDetail] = React.useState(null);
-  const [detailLoading, setDetailLoading] = React.useState(false);
   const [justCreated, setJustCreated] = React.useState(false);
 
-  // Fetch versions on mount
-  const refetchVersions = React.useCallback(() => {
-    let cancelled = false;
-    setVersionsLoading(true);
-    fetch("/api/schedules")
-      .then((r) => r.json())
-      .then((list) => {
-        if (!cancelled) setVersions(Array.isArray(list) ? list : []);
-      })
-      .catch(() => {
-        if (!cancelled) setVersions([]);
-      })
-      .finally(() => {
-        if (!cancelled) setVersionsLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  React.useEffect(() => {
-    refetchVersions();
-  }, [refetchVersions]);
-
-  // Fetch semesters on mount
-  React.useEffect(() => {
-    fetch("/api/semesters")
-      .then((r) => r.json())
-      .then((data) => setSemesters(Array.isArray(data) ? data : []))
-      .catch(() => setSemesters([]));
-  }, []);
-
-  // Fetch schedule detail when version selected
-  React.useEffect(() => {
-    if (!selectedVersionId) {
-      setScheduleDetail(null);
-      return;
-    }
-    let cancelled = false;
-    setDetailLoading(true);
-    fetch(`/api/schedules/${selectedVersionId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) setScheduleDetail(data);
-      })
-      .catch(() => {
-        if (!cancelled) setScheduleDetail(null);
-      })
-      .finally(() => {
-        if (!cancelled) setDetailLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [selectedVersionId]);
+  const { data: versions, isLoading: versionsLoading, refetch: refetchVersions } = useSchedules();
+  const { data: semesters } = useSemesters();
+  const { data: scheduleDetail, isLoading: detailLoading } = useScheduleDetail(selectedVersionId);
+  const { mutate: deleteScheduleMutate, isPending: deleteLoading } = useDeleteSchedule();
 
   const handleSelectVersion = React.useCallback((v) => {
     setSelectedVersionId(v.id);
   }, []);
 
-  const handleGenerateSuccess = React.useCallback((versionId) => {
-    setActiveSection("schedules");
-    setSelectedVersionId(versionId);
-    refetchVersions();
-    setJustCreated(true);
-  }, [refetchVersions]);
+  const handleGenerateSuccess = React.useCallback(
+    (versionId) => {
+      setActiveSection("schedules");
+      setSelectedVersionId(versionId);
+      refetchVersions();
+      setJustCreated(true);
+    },
+    [refetchVersions]
+  );
 
   const handleDeleteVersion = React.useCallback(
-    async (versionId) => {
-      const res = await fetch(`/api/schedules/${versionId}`, { method: "DELETE" });
-      if (!res.ok) return;
-      if (selectedVersionId === versionId) setSelectedVersionId(null);
-      refetchVersions();
+    (versionId) => {
+      deleteScheduleMutate(versionId, {
+        onSuccess: () => {
+          if (selectedVersionId === versionId) setSelectedVersionId(null);
+        },
+      });
     },
-    [selectedVersionId, refetchVersions]
+    [selectedVersionId, deleteScheduleMutate]
   );
 
   // Auto-select most recent schedule when versions first load
@@ -116,6 +72,7 @@ export function AppProvider({ children }) {
       handleGenerateSuccess,
       handleDeleteVersion,
       refetchVersions,
+      deleteLoading,
     }),
     [
       activeSection,
@@ -130,6 +87,7 @@ export function AppProvider({ children }) {
       handleGenerateSuccess,
       handleDeleteVersion,
       refetchVersions,
+      deleteLoading,
     ]
   );
 

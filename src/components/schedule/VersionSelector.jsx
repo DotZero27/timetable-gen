@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 /**
  * Composite: list of schedule version cards. Selecting one triggers onSelect(version).
  * Optional onDelete(version) shows a delete icon per row; parent should confirm and call API.
+ * deleteLoading disables the delete button while a delete is in progress.
  */
-export function VersionSelector({ versions, selectedId, onSelect, onDelete, loading }) {
+export function VersionSelector({ versions, selectedId, onSelect, onDelete, loading, deleteLoading }) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -76,7 +77,8 @@ export function VersionSelector({ versions, selectedId, onSelect, onDelete, load
                   e.stopPropagation();
                   onDelete(v);
                 }}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                disabled={deleteLoading}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 aria-label={`Delete schedule ${v.versionNumber}`}
               >
                 <Trash2 className="size-4" />

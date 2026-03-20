@@ -16,7 +16,10 @@ export async function GET(request) {
     return NextResponse.json(list);
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: err.message || "Failed to list subjects" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Try again later!" },
+      { status: 500 }
+    );
   }
 }
 
@@ -38,6 +41,16 @@ export async function POST(request) {
     return NextResponse.json(inserted);
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: err.message || "Failed to create subject" }, { status: 500 });
+    const msg = err?.message ?? "";
+    if (msg.includes("UNIQUE") && (msg.includes("subjects") || msg.includes("code"))) {
+      return NextResponse.json(
+        { error: "A subject with this code already exists." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Try again later!" },
+      { status: 500 }
+    );
   }
 }

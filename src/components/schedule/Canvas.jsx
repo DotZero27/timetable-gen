@@ -101,6 +101,7 @@ export function Canvas() {
     handleSelectVersion,
     handleGenerateSuccess,
     handleDeleteVersion,
+    deleteLoading,
   } = useApp();
 
   const [dismissCreated, setDismissCreated] = React.useState(false);
@@ -712,6 +713,7 @@ export function Canvas() {
                       onSelect={handleSelectVersion}
                       onDelete={handleScheduleDelete}
                       loading={versionsLoading}
+                      deleteLoading={deleteLoading}
                     />
                   ) : null}
                 </div>

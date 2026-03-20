@@ -14,75 +14,45 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { useSemesters } from "@/hooks/useSemesters";
+import { useSubjects } from "@/hooks/useSubjects";
+import { useAddSubject } from "@/hooks/useAddSubject";
 
 /**
  * Composite: form to add a subject (code, name, semester) + list of subjects with optional semester filter.
  */
 export function SubjectsManager({ semesters: initialSemesters, className }) {
-  const [semesters, setSemesters] = React.useState(initialSemesters ?? []);
-  const [subjects, setSubjects] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [listLoading, setListLoading] = React.useState(true);
   const [filterSemesterId, setFilterSemesterId] = React.useState("");
   const [code, setCode] = React.useState("");
   const [name, setName] = React.useState("");
   const [semesterId, setSemesterId] = React.useState("");
   const [error, setError] = React.useState(null);
 
-  React.useEffect(() => {
-    if (initialSemesters?.length) setSemesters(initialSemesters);
-    else {
-      fetch("/api/semesters")
-        .then((r) => r.json())
-        .then((data) => setSemesters(Array.isArray(data) ? data : []))
-        .catch(() => setSemesters([]));
-    }
-  }, [initialSemesters]);
+  const { data: semestersFromApi } = useSemesters();
+  const semesters = initialSemesters?.length ? initialSemesters : (semestersFromApi ?? []);
+  const { data: subjects, isLoading: listLoading } = useSubjects(filterSemesterId || undefined);
+  const { mutate: addSubjectMutate, isPending } = useAddSubject();
 
-  const loadSubjects = React.useCallback(() => {
-    setListLoading(true);
-    const url = filterSemesterId
-      ? `/api/subjects?semesterId=${filterSemesterId}`
-      : "/api/subjects";
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => setSubjects(Array.isArray(data) ? data : []))
-      .catch(() => setSubjects([]))
-      .finally(() => setListLoading(false));
-  }, [filterSemesterId]);
-
-  React.useEffect(() => {
-    loadSubjects();
-  }, [loadSubjects]);
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError(null);
     if (!code.trim() || !name.trim() || !semesterId) {
       setError("Code, name, and semester are required.");
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/subjects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim(), name: name.trim(), semesterId: Number(semesterId) }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to add subject");
-        return;
+    addSubjectMutate(
+      { code: code.trim(), name: name.trim(), semesterId: Number(semesterId) },
+      {
+        onSuccess: () => {
+          setCode("");
+          setName("");
+          setSemesterId("");
+        },
+        onError: (err) => {
+          setError(err.message || "Failed to add subject");
+        },
       }
-      setCode("");
-      setName("");
-      setSemesterId("");
-      loadSubjects();
-    } catch (err) {
-      setError(err.message || "Failed to add subject");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const semestersSorted = React.useMemo(
@@ -143,8 +113,8 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Adding…" : "Add subject"}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Adding…" : "Add subject"}
             </Button>
           </form>
         </CardContent>
@@ -176,7 +146,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
         <CardContent>
           {listLoading ? (
             <p className="text-sm text-muted-foreground py-4">Loading…</p>
-          ) : subjects.length === 0 ? (
+          ) : (subjects ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No subjects yet. Add one above.</p>
           ) : (
             <div className="rounded-md border">
@@ -189,7 +159,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {subjects.map((sub) => {
+                  {(subjects ?? []).map((sub) => {
                     const sem = semesters.find((s) => s.id === sub.semesterId);
                     return (
                       <motion.tr
