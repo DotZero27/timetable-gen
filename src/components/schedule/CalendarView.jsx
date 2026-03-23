@@ -25,7 +25,7 @@ export function CalendarView({ schedule, onDayClick, selectedDay, className }) {
   if (!schedule) return null;
 
   const [viewMode, setViewMode] = React.useState("month");
-  const { id, versionNumber, cycle, createdAt, status, examSlots } = schedule;
+  const { id, versionNumber, name, cycle, createdAt, status, examSlots } = schedule;
 
   return (
     <motion.div
@@ -38,7 +38,7 @@ export function CalendarView({ schedule, onDayClick, selectedDay, className }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-semibold tracking-tight">Schedule {versionNumber}</CardTitle>
+            <CardTitle className="text-lg font-semibold tracking-tight">{name || `Schedule ${versionNumber}`}</CardTitle>
             <p className="text-[13px] text-muted-foreground">
               {cycle === "EVEN" ? "Even semesters" : "Odd semesters"} · Created {new Date(createdAt).toLocaleDateString()}
             </p>

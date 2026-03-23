@@ -23,12 +23,30 @@ function useCalendarHolidaysRange() {
   return useHolidays({ from, to });
 }
 
+function countWorkingDays(startDate, endDate, holidaySet) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const day = cursor.getDay();
+    const iso = cursor.toISOString().slice(0, 10);
+    if (day !== 0 && day !== 6 && !holidaySet.has(iso)) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
+
 export function GenerateProvider({ children, semesters = [], onSuccess }) {
   const [step, setStep] = React.useState(1);
   const [cycle, setCycle] = React.useState("EVEN");
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
   const [semesterIds, setSemesterIds] = React.useState([]);
+  const [semesterGapDays, setSemesterGapDays] = React.useState(1);
+  const [pairRotationMode, setPairRotationMode] = React.useState("AVAILABLE_ONLY");
   const [error, setError] = React.useState(null);
   const [rule, setRule] = React.useState(null);
   const [fixedAssignments, setFixedAssignments] = React.useState([]);
@@ -72,8 +90,18 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
       setError("Please select at least one semester.");
       return;
     }
+    const workingDays = countWorkingDays(startDate, endDate, calendarHolidays || new Set());
+    if (workingDays <= 0) {
+      setError("No working days in selected range. Please pick a valid range excluding weekends/holidays.");
+      return;
+    }
+    const minRequiredDays = Math.ceil(subjectsInScope.length / 2);
+    if (workingDays < minRequiredDays) {
+      setError("Not enough working days. Try a longer date range or fewer semesters.");
+      return;
+    }
     setStep(2);
-  }, [startDate, endDate, semesterIds]);
+  }, [startDate, endDate, semesterIds, calendarHolidays, subjectsInScope.length]);
 
   const goBack = React.useCallback(() => setStep(1), []);
 
@@ -82,6 +110,8 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
     setStartDate("");
     setEndDate("");
     setSemesterIds([]);
+    setSemesterGapDays(1);
+    setPairRotationMode("AVAILABLE_ONLY");
     setFixedAssignments([]);
     setError(null);
     setRule(null);
@@ -101,16 +131,23 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
         setError("Select at least one semester.");
         return;
       }
+      if (!Number.isInteger(semesterGapDays) || semesterGapDays < 0) {
+        setError("Semester gap must be a non-negative whole number.");
+        return;
+      }
       generateScheduleMutate(
         {
           cycle,
           startDate,
           endDate,
           semesterIds,
+          semesterGapDays,
+          pairRotationMode,
           fixedAssignments: fixedAssignments.map((a) => ({
             date: a.date,
             slot: a.slot,
             subjectCode: a.subjectCode,
+            departmentId: a.departmentId,
           })),
         },
         {
@@ -131,6 +168,8 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
       startDate,
       endDate,
       semesterIds,
+      semesterGapDays,
+      pairRotationMode,
       fixedAssignments,
       onSuccess,
       generateScheduleMutate,
@@ -150,6 +189,10 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
       setEndDate,
       semesterIds,
       setSemesterIds,
+      semesterGapDays,
+      setSemesterGapDays,
+      pairRotationMode,
+      setPairRotationMode,
       semesters,
       loading,
       error,
@@ -174,6 +217,8 @@ export function GenerateProvider({ children, semesters = [], onSuccess }) {
       startDate,
       endDate,
       semesterIds,
+      semesterGapDays,
+      pairRotationMode,
       semesters,
       loading,
       error,

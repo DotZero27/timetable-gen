@@ -14,6 +14,9 @@ export default function DataPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Manage subjects and holidays. Use Excel import for bulk data entry.
         </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Subject Excel format uses `departments` as comma-separated department codes (example: CSE,IT).
+        </p>
       </div>
 
       <Tabs defaultValue="subjects" className="space-y-4">
@@ -32,6 +35,8 @@ export default function DataPage() {
               endpoint="/api/subjects/import"
               queryKey="subjects"
               label="Import from Excel"
+              enablePreview
+              previewType="subjects"
             />
           </div>
           <SubjectsManager />

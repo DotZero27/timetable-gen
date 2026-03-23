@@ -486,8 +486,8 @@ export function Canvas() {
     }
     if (activeSection === "schedules" && selectedDay != null) {
       const daySlots = scheduleDetail?.examSlots?.filter((s) => s.date === selectedDay) ?? [];
-      const forenoon = daySlots.find((s) => s.slot === "FORENOON");
-      const afternoon = daySlots.find((s) => s.slot === "AFTERNOON");
+      const forenoons = daySlots.filter((s) => s.slot === "FORENOON");
+      const afternoons = daySlots.filter((s) => s.slot === "AFTERNOON");
       const dateLabel = (() => {
         try {
           const d = new Date(selectedDay + "T12:00:00");
@@ -511,7 +511,7 @@ export function Canvas() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {daySlots.length === 0
                     ? "No exams on this day"
-                    : `${daySlots.length} exam${daySlots.length === 1 ? "" : "s"} (${forenoon ? "FN" : ""}${forenoon && afternoon ? " + " : ""}${afternoon ? "AN" : ""})`}
+                    : `${daySlots.length} exam${daySlots.length === 1 ? "" : "s"} (${forenoons.length > 0 ? "FN" : ""}${forenoons.length > 0 && afternoons.length > 0 ? " + " : ""}${afternoons.length > 0 ? "AN" : ""})`}
                 </p>
               </div>
               <Button
@@ -537,13 +537,23 @@ export function Canvas() {
               <>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Forenoon</p>
-                  {forenoon ? (
-                    <SlotCard
-                      subjectName={forenoon.subjectName}
-                      subjectCode={forenoon.subjectCode}
-                      semesterNumber={forenoon.semesterNumber}
-                      slot={forenoon.slot}
-                    />
+                  {forenoons.length > 0 ? (
+                    <div className="space-y-2">
+                      {forenoons.map((forenoon) => (
+                        <SlotCard
+                          key={`${forenoon.subjectCode}:${forenoon.slot}:${forenoon.date}`}
+                          subjectName={forenoon.subjectName}
+                          subjectCode={forenoon.subjectCode}
+                          semesterNumber={forenoon.semesterNumber}
+                          slot={forenoon.slot}
+                        />
+                      ))}
+                      {forenoons.length > 1 && (
+                        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                          Invalid: multiple forenoon exams in one day
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-muted-foreground/30 py-6 text-center text-muted-foreground text-sm">
                       No forenoon exam
@@ -552,13 +562,23 @@ export function Canvas() {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Afternoon</p>
-                  {afternoon ? (
-                    <SlotCard
-                      subjectName={afternoon.subjectName}
-                      subjectCode={afternoon.subjectCode}
-                      semesterNumber={afternoon.semesterNumber}
-                      slot={afternoon.slot}
-                    />
+                  {afternoons.length > 0 ? (
+                    <div className="space-y-2">
+                      {afternoons.map((afternoon) => (
+                        <SlotCard
+                          key={`${afternoon.subjectCode}:${afternoon.slot}:${afternoon.date}`}
+                          subjectName={afternoon.subjectName}
+                          subjectCode={afternoon.subjectCode}
+                          semesterNumber={afternoon.semesterNumber}
+                          slot={afternoon.slot}
+                        />
+                      ))}
+                      {afternoons.length > 1 && (
+                        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                          Invalid: multiple afternoon exams in one day
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-muted-foreground/30 py-6 text-center text-muted-foreground text-sm">
                       No afternoon exam

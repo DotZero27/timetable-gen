@@ -6,6 +6,9 @@ export const queryKeys = {
   semesters: {
     all: ["semesters"],
   },
+  departments: {
+    all: ["departments"],
+  },
   subjects: {
     all: ["subjects"],
     list: (semesterId) => (semesterId != null && semesterId !== "" ? ["subjects", semesterId] : ["subjects"]),

@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 function buildByDate(examSlots) {
   const byDate = new Map();
   for (const s of examSlots || []) {
-    if (!byDate.has(s.date)) byDate.set(s.date, {});
-    byDate.get(s.date)[s.slot] = s;
+    if (!byDate.has(s.date)) byDate.set(s.date, { FORENOON: [], AFTERNOON: [] });
+    byDate.get(s.date)[s.slot].push(s);
   }
   return byDate;
 }
@@ -93,10 +93,10 @@ export function MonthCalendar({ examSlots, className }) {
               return <CalendarEmptyCell key={`empty-${idx}`} />;
             }
             const iso = toISODate(date);
-            const daySlots = byDate.get(iso) || {};
-            const forenoon = daySlots.FORENOON;
-            const afternoon = daySlots.AFTERNOON;
-            const hasExams = forenoon || afternoon;
+            const daySlots = byDate.get(iso) || { FORENOON: [], AFTERNOON: [] };
+            const forenoons = daySlots.FORENOON || [];
+            const afternoons = daySlots.AFTERNOON || [];
+            const hasExams = forenoons.length > 0 || afternoons.length > 0;
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
             return (
@@ -112,20 +112,27 @@ export function MonthCalendar({ examSlots, className }) {
                 >
                   {date.getDate()}
                 </span>
-                {forenoon && (
+                {forenoons.length > 0 && (
                   <div
                     className="text-[10px] truncate rounded-md bg-primary/15 px-1.5 py-0.5 text-primary font-medium"
-                    title={forenoon.subjectName}
+                    title={forenoons.map((s) => s.subjectName).join(", ")}
                   >
-                    FN: {forenoon.subjectCode}
+                    FN: {forenoons[0].subjectCode}
+                    {forenoons.length > 1 ? ` +${forenoons.length - 1}` : ""}
                   </div>
                 )}
-                {afternoon && (
+                {afternoons.length > 0 && (
                   <div
                     className="text-[10px] truncate rounded-md bg-primary/15 px-1.5 py-0.5 text-primary font-medium"
-                    title={afternoon.subjectName}
+                    title={afternoons.map((s) => s.subjectName).join(", ")}
                   >
-                    AN: {afternoon.subjectCode}
+                    AN: {afternoons[0].subjectCode}
+                    {afternoons.length > 1 ? ` +${afternoons.length - 1}` : ""}
+                  </div>
+                )}
+                {(forenoons.length > 1 || afternoons.length > 1) && (
+                  <div className="text-[10px] rounded-md border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-destructive">
+                    Invalid duplicate slot exams
                   </div>
                 )}
               </div>

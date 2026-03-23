@@ -15,7 +15,7 @@ export default function SchedulesPage() {
 
   const handleDelete = React.useCallback(
     (v) => {
-      if (!confirm(`Delete Schedule ${v.versionNumber}?`)) return;
+      if (!confirm(`Delete ${v.name || `Schedule ${v.versionNumber}`}?`)) return;
       deleteSchedule(v.id);
     },
     [deleteSchedule]
@@ -74,7 +74,7 @@ export default function SchedulesPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
-                    <p className="font-medium text-sm">Schedule {v.versionNumber}</p>
+                    <p className="font-medium text-sm">{v.name || `Schedule ${v.versionNumber}`}</p>
                     <p className="text-xs text-muted-foreground">
                       {v.cycle === "EVEN" ? "Even semesters" : "Odd semesters"} · {new Date(v.createdAt).toLocaleDateString()}
                     </p>

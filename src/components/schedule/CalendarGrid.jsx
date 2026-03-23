@@ -5,20 +5,31 @@ import { motion } from "framer-motion";
 import { SlotCard } from "./SlotCard";
 import { UnifiedCalendar } from "./UnifiedCalendar";
 import { cn } from "@/lib/utils";
+import { canCoexistInSlot } from "@/lib/schedule/slotRules";
 
 const SLOT_ORDER = ["FORENOON", "AFTERNOON"];
 
 /**
- * Build sorted list of dates and a map: date -> { FORENOON?: examSlot, AFTERNOON?: examSlot }.
+ * Build sorted list of dates and a map: date -> slot -> examSlot[].
  */
 function buildCalendarData(examSlots) {
   const byDate = new Map();
   for (const s of examSlots || []) {
-    if (!byDate.has(s.date)) byDate.set(s.date, {});
-    byDate.get(s.date)[s.slot] = s;
+    if (!byDate.has(s.date)) byDate.set(s.date, { FORENOON: [], AFTERNOON: [] });
+    byDate.get(s.date)[s.slot].push(s);
   }
   const dates = Array.from(byDate.keys()).sort();
   return { dates, byDate };
+}
+
+function hasSlotConflict(entries) {
+  const placed = [];
+  for (const entry of entries || []) {
+    const result = canCoexistInSlot(placed, entry);
+    if (!result.ok) return true;
+    placed.push(entry);
+  }
+  return false;
 }
 
 /**
@@ -68,20 +79,31 @@ function ScheduleTable({ examSlots, className }) {
                 {slotType === "FORENOON" ? "Forenoon" : "Afternoon"}
               </td>
               {dates.map((date) => {
-                const daySlots = byDate.get(date) || {};
-                const exam = daySlots[slotType];
+                const daySlots = byDate.get(date) || { FORENOON: [], AFTERNOON: [] };
+                const exams = daySlots[slotType] || [];
+                const showConflict = hasSlotConflict(exams);
                 return (
                   <td
                     key={date}
                     className="p-2.5 align-top min-w-[140px] border-r border-border/40"
                   >
-                    {exam ? (
-                      <SlotCard
-                        subjectName={exam.subjectName}
-                        subjectCode={exam.subjectCode}
-                        semesterNumber={exam.semesterNumber}
-                        slot={exam.slot}
-                      />
+                    {exams.length > 0 ? (
+                      <div className="space-y-2">
+                        {exams.map((exam) => (
+                          <SlotCard
+                            key={`${exam.subjectCode}:${exam.departmentId}:${exam.slot}:${exam.date}`}
+                            subjectName={exam.subjectName}
+                            subjectCode={exam.subjectCode}
+                            semesterNumber={exam.semesterNumber}
+                            slot={exam.slot}
+                          />
+                        ))}
+                        {showConflict && (
+                          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                            Invalid: slot conflict
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="rounded-lg border border-dashed border-muted-foreground/30 py-5 flex items-center justify-center text-muted-foreground text-xs bg-muted/10">
                         —

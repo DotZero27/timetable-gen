@@ -6,7 +6,7 @@ import { queryKeys } from "./queryKeys";
 import { apiClient } from "@/lib/apiClient";
 
 /**
- * @param {{ cycle: string, startDate: string, endDate: string, semesterIds: number[], fixedAssignments: { date: string, slot: string, subjectCode: string }[] }} payload
+ * @param {{ cycle: string, startDate: string, endDate: string, semesterIds: number[], semesterGapDays?: number, pairRotationMode?: "AVAILABLE_ONLY" | "FULL_CYCLE", fixedAssignments: { date: string, slot: string, subjectCode: string, departmentId: number }[] }} payload
  */
 async function generateSchedule(payload) {
   const res = await apiClient.post("/schedules/generate", {
@@ -14,10 +14,13 @@ async function generateSchedule(payload) {
     startDate: payload.startDate,
     endDate: payload.endDate,
     semesterIds: payload.semesterIds,
+    semesterGapDays: payload.semesterGapDays,
+    pairRotationMode: payload.pairRotationMode,
     fixedAssignments: (payload.fixedAssignments || []).map((a) => ({
       date: a.date,
       slot: a.slot,
       subjectCode: a.subjectCode,
+      departmentId: Number(a.departmentId),
     })),
   });
   return res?.data;

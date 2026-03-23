@@ -32,6 +32,7 @@ import {
 } from "@/components/schedule/CalendarComposite";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { canCoexistInSlot } from "@/lib/schedule/slotRules";
 
 const SLOTS = [
   { value: "FORENOON", label: "Forenoon" },
@@ -41,55 +42,114 @@ const SLOTS = [
 function buildByDate(examSlots) {
   const byDate = new Map();
   for (const s of examSlots || []) {
-    if (!byDate.has(s.date)) byDate.set(s.date, {});
-    byDate.get(s.date)[s.slot] = s;
+    if (!byDate.has(s.date)) byDate.set(s.date, { FORENOON: [], AFTERNOON: [] });
+    byDate.get(s.date)[s.slot].push(s);
   }
   return byDate;
 }
 
+function hasSlotConflict(entries) {
+  const placed = [];
+  for (const entry of entries || []) {
+    const result = canCoexistInSlot(placed, entry);
+    if (!result.ok) return true;
+    placed.push(entry);
+  }
+  return false;
+}
+
 function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose }) {
-  const [subjectCode, setSubjectCode] = React.useState("");
+  const [subjectKey, setSubjectKey] = React.useState("");
   const [slot, setSlot] = React.useState("FORENOON");
 
   const used = React.useMemo(() => {
     const set = new Set();
     for (const a of fixedAssignments) {
-      if (a.date === date) set.add(`${a.slot}:${a.subjectCode}`);
+      if (a.date === date) set.add(`${a.slot}:${a.subjectCode}:${a.departmentId}`);
     }
     return set;
   }, [date, fixedAssignments]);
 
-  const assignedSubjectCodes = React.useMemo(
-    () => new Set((fixedAssignments || []).map((a) => a.subjectCode)),
+  const assignedSubjectKeys = React.useMemo(
+    () => new Set((fixedAssignments || []).map((a) => `${a.subjectCode}::${a.departmentId}`)),
     [fixedAssignments]
   );
 
   const handleSubmit = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!subjectCode) return;
-    if (assignedSubjectCodes.has(subjectCode)) return;
-    const key = `${slot}:${subjectCode}`;
+    if (!subjectKey) return;
+    if (assignedSubjectKeys.has(subjectKey)) return;
+    const [selectedCode, selectedDept] = subjectKey.split("::");
+    const key = `${slot}:${selectedCode}:${selectedDept}`;
     if (used.has(key)) return;
-    const sub = subjects.find((s) => s.code === subjectCode);
+    const sub = subjects.find((s) => `${s.code}::${s.departmentId}` === subjectKey);
     if (!sub) return;
     onAdd({
       date,
       slot,
       subjectCode: sub.code,
       subjectName: sub.name,
+      semesterNumber: sub.semesterNumber,
+      departmentId: sub.departmentId,
+      isElective: sub.isElective ?? false,
+      electiveGroupId: sub.electiveGroupId ?? null,
     });
     onClose?.();
   };
 
-  const slotTaken = (s) => {
-    for (const a of fixedAssignments) {
-      if (a.date === date && a.slot === s) return true;
-    }
-    return false;
-  };
+  const subjectByKey = React.useMemo(
+    () => new Map((subjects || []).map((s) => [`${s.code}::${s.departmentId}`, s])),
+    [subjects]
+  );
 
-  const isSubjectAlreadyAssigned = (code) => assignedSubjectCodes.has(code);
+  const toSlotEntry = React.useCallback(
+    (assignment) => {
+      const subject = subjectByKey.get(`${assignment.subjectCode}::${assignment.departmentId}`);
+      return {
+        subjectCode: assignment.subjectCode,
+        semesterNumber: assignment.semesterNumber ?? subject?.semesterNumber,
+        departmentId: assignment.departmentId ?? subject?.departmentId,
+        isElective: assignment.isElective ?? subject?.isElective ?? false,
+        electiveGroupId: assignment.electiveGroupId ?? subject?.electiveGroupId ?? null,
+      };
+    },
+    [subjectByKey]
+  );
+
+  const isSlotAllowed = React.useCallback(
+    (slotName) => {
+      if (!subjectKey) return true;
+      const subject = subjectByKey.get(subjectKey);
+      if (!subject) return false;
+      const candidate = {
+        subjectCode: subject.code,
+        semesterNumber: subject.semesterNumber,
+        departmentId: subject.departmentId,
+        isElective: subject.isElective ?? false,
+        electiveGroupId: subject.electiveGroupId ?? null,
+      };
+      if (!Number.isFinite(candidate.semesterNumber) || !Number.isFinite(candidate.departmentId)) {
+        return true;
+      }
+      const sameSlotEntries = (fixedAssignments || [])
+        .filter((a) => a.date === date && a.slot === slotName)
+        .map(toSlotEntry)
+        .filter((e) => Number.isFinite(e.semesterNumber) && Number.isFinite(e.departmentId));
+      const otherSlot = slotName === "FORENOON" ? "AFTERNOON" : "FORENOON";
+      const otherEntries = (fixedAssignments || [])
+        .filter((a) => a.date === date && a.slot === otherSlot)
+        .map(toSlotEntry)
+        .filter((e) => Number.isFinite(e.semesterNumber));
+      if (otherEntries.some((entry) => entry.semesterNumber === candidate.semesterNumber)) {
+        return false;
+      }
+      return canCoexistInSlot(sameSlotEntries, candidate).ok;
+    },
+    [date, fixedAssignments, subjectByKey, subjectKey, toSlotEntry]
+  );
+
+  const isSubjectAlreadyAssigned = (key) => assignedSubjectKeys.has(key);
 
   return (
     <form onSubmit={handleSubmit} className="mt-3 space-y-3" noValidate>
@@ -99,20 +159,21 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
       </div>
       <div>
         <Label className="block mb-1">Subject</Label>
-        <Select value={subjectCode || undefined} onValueChange={setSubjectCode}>
+        <Select value={subjectKey || undefined} onValueChange={setSubjectKey}>
           <SelectTrigger className="w-full" aria-label="Select subject">
             <SelectValue placeholder="Select subject" />
           </SelectTrigger>
           <SelectContent>
             {subjects.map((s) => {
-              const alreadyAssigned = isSubjectAlreadyAssigned(s.code);
+              const value = `${s.code}::${s.departmentId}`;
+              const alreadyAssigned = isSubjectAlreadyAssigned(value);
               return (
                 <SelectItem
-                  key={s.code}
-                  value={s.code}
+                  key={value}
+                  value={value}
                   disabled={alreadyAssigned}
                 >
-                  {s.code} — {s.name}
+                  {s.code} — {s.name} ({s.departmentCode ?? `Dept ${s.departmentId}`})
                   {alreadyAssigned ? " (already assigned)" : ""}
                 </SelectItem>
               );
@@ -128,15 +189,15 @@ function AddAssignmentForm({ date, subjects, fixedAssignments, onAdd, onClose })
           </SelectTrigger>
           <SelectContent>
             {SLOTS.map((s) => (
-              <SelectItem key={s.value} value={s.value} disabled={slotTaken(s.value)}>
+              <SelectItem key={s.value} value={s.value} disabled={!isSlotAllowed(s.value)}>
                 {s.label}
-                {slotTaken(s.value) ? " (taken)" : ""}
+                {!isSlotAllowed(s.value) ? " (conflict)" : ""}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" size="sm" disabled={!subjectCode || isSubjectAlreadyAssigned(subjectCode)}>
+      <Button type="submit" size="sm" disabled={!subjectKey || isSubjectAlreadyAssigned(subjectKey)}>
         Add
       </Button>
     </form>
@@ -300,10 +361,12 @@ export function UnifiedCalendar({
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
             if (mode === "view") {
-              const daySlots = byDate.get(iso) || {};
-              const forenoon = daySlots.FORENOON;
-              const afternoon = daySlots.AFTERNOON;
-              const hasExams = forenoon || afternoon;
+              const daySlots = byDate.get(iso) || { FORENOON: [], AFTERNOON: [] };
+              const forenoons = daySlots.FORENOON || [];
+              const afternoons = daySlots.AFTERNOON || [];
+              const hasExams = forenoons.length > 0 || afternoons.length > 0;
+              const hasFnConflict = hasSlotConflict(forenoons);
+              const hasAnConflict = hasSlotConflict(afternoons);
               const isSelected = selectedDay === iso;
               const Comp = onDayClick ? "button" : "div";
               return (
@@ -330,20 +393,27 @@ export function UnifiedCalendar({
                   >
                     {dayNum}
                   </span>
-                  {forenoon && (
+                  {forenoons.length > 0 && (
                     <div
                       className="text-[10px] truncate rounded-md bg-primary/15 px-1.5 py-0.5 text-primary font-medium"
-                      title={forenoon.subjectName}
+                      title={forenoons.map((s) => s.subjectName).join(", ")}
                     >
-                      FN: {forenoon.subjectCode}
+                      FN: {forenoons[0].subjectCode} ({forenoons[0].semesterNumber})
+                      {forenoons.length > 1 ? ` +${forenoons.length - 1}` : ""}
                     </div>
                   )}
-                  {afternoon && (
+                  {afternoons.length > 0 && (
                     <div
                       className="text-[10px] truncate rounded-md bg-primary/15 px-1.5 py-0.5 text-primary font-medium"
-                      title={afternoon.subjectName}
+                      title={afternoons.map((s) => s.subjectName).join(", ")}
                     >
-                      AN: {afternoon.subjectCode}
+                      AN: {afternoons[0].subjectCode} ({afternoons[0].semesterNumber})
+                      {afternoons.length > 1 ? ` +${afternoons.length - 1}` : ""}
+                    </div>
+                  )}
+                  {(hasFnConflict || hasAnConflict) && (
+                    <div className="text-[10px] rounded-md border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-destructive">
+                      Invalid slot conflict
                     </div>
                   )}
                 </Comp>

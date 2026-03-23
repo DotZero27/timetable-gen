@@ -57,10 +57,10 @@ export function VersionSelector({ versions, selectedId, onSelect, onDelete, load
             type="button"
             className="absolute inset-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             onClick={() => onSelect(v)}
-            aria-label={`Select schedule ${v.versionNumber}`}
+            aria-label={`Select schedule ${v.name || `Schedule ${v.versionNumber}`}`}
           />
           <div className="text-xs flex flex-col gap-0.5 relative z-10 pointer-events-none">
-            <span className="font-medium">Schedule {v.versionNumber}</span>
+            <span className="font-medium">{v.name || `Schedule ${v.versionNumber}`}</span>
             <span className="flex items-center gap-1 text-muted-foreground">
               {v.cycle === "EVEN" ? "Even semesters" : "Odd semesters"} · {new Date(v.createdAt).toLocaleDateString()}
             </span>
@@ -79,7 +79,7 @@ export function VersionSelector({ versions, selectedId, onSelect, onDelete, load
                 }}
                 disabled={deleteLoading}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                aria-label={`Delete schedule ${v.versionNumber}`}
+                aria-label={`Delete schedule ${v.name || `Schedule ${v.versionNumber}`}`}
               >
                 <Trash2 className="size-4" />
               </button>

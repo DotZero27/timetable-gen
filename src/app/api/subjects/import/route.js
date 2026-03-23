@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { getDb } from "@/db";
-import { subjects, semesters } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { subjects, semesters, departments, subjectDepartments } from "@/db/schema";
 
 export async function POST(request) {
   try {
@@ -29,6 +28,12 @@ export async function POST(request) {
       allSemesters.map((s) => [s.semesterNumber, s.id])
     );
 
+    // Build departmentCode → departmentId lookup
+    const allDepartments = await db.select().from(departments);
+    const departmentMap = new Map(
+      allDepartments.map((d) => [d.code.toUpperCase(), d.id])
+    );
+
     const errors = [];
     const toInsert = [];
 
@@ -38,6 +43,11 @@ export async function POST(request) {
       const code = String(row.code ?? "").trim();
       const name = String(row.name ?? "").trim();
       const semNum = Number(row.semester);
+      const rawDepartments = String(row.departments ?? row.department ?? "");
+      const deptCodes = rawDepartments
+        .split(/[;,/|]/)
+        .map((x) => x.trim().toUpperCase())
+        .filter(Boolean);
 
       if (!code) {
         errors.push(`Row ${rowNum}: missing code`);
@@ -58,7 +68,26 @@ export async function POST(request) {
         continue;
       }
 
-      toInsert.push({ code, name, semesterId });
+      if (deptCodes.length === 0) {
+        errors.push(`Row ${rowNum}: missing department`);
+        continue;
+      }
+      const departmentIds = [];
+      for (const deptCode of deptCodes) {
+        const departmentId = departmentMap.get(deptCode) ?? null;
+        if (!departmentId) {
+          errors.push(`Row ${rowNum}: department "${deptCode}" not found in database`);
+          continue;
+        }
+        departmentIds.push(departmentId);
+      }
+      if (departmentIds.length === 0) continue;
+
+      const electiveRaw = String(row.elective ?? "").trim().toLowerCase();
+      const isElective = ["yes", "true", "1"].includes(electiveRaw);
+      const electiveGroupId = String(row.electiveGroupId ?? row.elective_group_id ?? "").trim() || null;
+
+      toInsert.push({ code, name, semesterId, departmentIds: [...new Set(departmentIds)], isElective, electiveGroupId });
     }
 
     if (errors.length > 0) {
@@ -72,15 +101,31 @@ export async function POST(request) {
     let inserted = 0;
     for (const row of toInsert) {
       try {
-        await db.insert(subjects).values(row);
+        await db.insert(subjects).values({
+          code: row.code,
+          name: row.name,
+          semesterId: row.semesterId,
+          departmentId: row.departmentIds[0],
+          isElective: row.isElective,
+          electiveGroupId: row.electiveGroupId,
+        });
         inserted++;
       } catch (err) {
         const msg = err?.message ?? "";
         if (msg.includes("UNIQUE")) {
-          // Skip duplicates silently
-          continue;
+          // Existing subject; keep processing mappings.
         }
-        throw err;
+      }
+      for (const departmentId of row.departmentIds) {
+        try {
+          await db.insert(subjectDepartments).values({
+            subjectCode: row.code,
+            departmentId,
+          });
+        } catch (err) {
+          const msg = err?.message ?? "";
+          if (!msg.includes("UNIQUE")) throw err;
+        }
       }
     }
 

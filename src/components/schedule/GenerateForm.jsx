@@ -24,6 +24,10 @@ const CYCLES = [
   { value: "EVEN", label: "Even semesters (2, 4, 6, 8)" },
   { value: "ODD", label: "Odd semesters (1, 3, 5, 7)" },
 ];
+const PAIR_ROTATION_MODES = [
+  { value: "AVAILABLE_ONLY", label: "Available pairs only (skip missing)" },
+  { value: "FULL_CYCLE", label: "Full cycle (include missing pairs)" },
+];
 
 const STEPS = [
   { id: 1, title: "Choose dates and semesters" },
@@ -117,6 +121,10 @@ export function CreateScheduleProperties() {
     endDate,
     semesterIds,
     setSemesterIds,
+    semesterGapDays,
+    setSemesterGapDays,
+    pairRotationMode,
+    setPairRotationMode,
     semesters,
     fixedAssignments,
     setFixedAssignments,
@@ -138,6 +146,17 @@ export function CreateScheduleProperties() {
     setSemesterIds((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
+  };
+
+  const onChangeGapDays = (event) => {
+    const raw = event.target.value;
+    if (raw === "") {
+      setSemesterGapDays(0);
+      return;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isNaN(parsed)) return;
+    setSemesterGapDays(Math.max(0, parsed));
   };
 
   const removeAssignment = React.useCallback(
@@ -181,6 +200,18 @@ export function CreateScheduleProperties() {
               {selectedSemesters.length > 0
                 ? selectedSemesters.map((s) => s.name).join(", ")
                 : <span className="text-muted-foreground italic">None selected</span>}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Semester gap</dt>
+            <dd className="font-medium text-foreground mt-0.5">
+              {semesterGapDays} day{semesterGapDays === 1 ? "" : "s"} minimum between same-semester exams
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Pair rotation</dt>
+            <dd className="font-medium text-foreground mt-0.5">
+              {pairRotationMode === "AVAILABLE_ONLY" ? "Available pairs only" : "Full cycle"}
             </dd>
           </div>
           {step === 2 && startDate && endDate && (
@@ -252,6 +283,39 @@ export function CreateScheduleProperties() {
                         </Label>
                       ))}
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="semester-gap-days" className="block mb-2">Minimum same-semester gap (days)</Label>
+                    <Input
+                      id="semester-gap-days"
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      value={semesterGapDays}
+                      onChange={onChangeGapDays}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      0 allows consecutive days. 1 means one day in between (for example 12/05 then 14/05).
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="block mb-2">Missing pair handling</Label>
+                    <Select value={pairRotationMode} onValueChange={setPairRotationMode}>
+                      <SelectTrigger className="w-full" aria-label="Missing pair handling">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAIR_ROTATION_MODES.map((mode) => (
+                          <SelectItem key={mode.value} value={mode.value}>
+                            {mode.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Choose whether missing semester pairs are skipped or retained as empty cycle turns.
+                    </p>
                   </div>
                 </div>
               </div>

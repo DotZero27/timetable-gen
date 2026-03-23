@@ -6,13 +6,16 @@ import { queryKeys } from "./queryKeys";
 import { apiClient } from "@/lib/apiClient";
 
 /**
- * @param {{ code: string, name: string, semesterId: number }} payload
+ * @param {{ code: string, name: string, semesterId: number, departmentIds: number[], isElective?: boolean, electiveGroupId?: string }} payload
  */
 async function addSubject(payload) {
   const res = await apiClient.post("/subjects", {
     code: payload.code.trim(),
     name: payload.name.trim(),
     semesterId: Number(payload.semesterId),
+    departmentIds: (payload.departmentIds || []).map((id) => Number(id)),
+    isElective: payload.isElective === true,
+    electiveGroupId: String(payload.electiveGroupId ?? "").trim(),
   });
   return res?.data;
 }
