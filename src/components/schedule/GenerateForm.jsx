@@ -436,6 +436,41 @@ export function GenerateForm({ className, isActive = true, actionBarRef }) {
           </footer>,
           actionBarRef.current
         )}
+
+      {/* Inline action bar fallback for standalone (non-canvas) usage */}
+      {isActive && !actionBarRef?.current && (
+        <footer
+          role="toolbar"
+          aria-label="Schedule actions"
+          className="grid grid-cols-2 items-center gap-2 justify-between pt-2"
+        >
+          {step === 1 ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={goNext}
+              className="gap-2 w-full col-span-2"
+            >
+              Next: Fix specific dates
+              <ChevronRightIcon className="size-4" />
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={goBack}
+              >
+                Back
+              </Button>
+              <Button type="submit" form={FORM_ID} disabled={loading} size="sm" className="w-full">
+                {loading ? "Generating…" : "Generate schedule"}
+              </Button>
+            </>
+          )}
+        </footer>
+      )}
     </motion.div>
   );
 }

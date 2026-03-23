@@ -2,18 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 async function fetchHolidays(from, to) {
   const params = new URLSearchParams();
   if (from) params.set("from", from);
   if (to) params.set("to", to);
-  const url = `/api/holidays${params.toString() ? `?${params}` : ""}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to list holidays");
-  }
-  const list = await res.json();
+  const url = `/holidays${params.toString() ? `?${params}` : ""}`;
+  const res = await apiClient.get(url);
+  const list = res?.data;
   return Array.isArray(list) ? list : [];
 }
 

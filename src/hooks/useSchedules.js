@@ -2,14 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 async function fetchSchedules() {
-  const res = await fetch("/api/schedules");
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to list schedules");
-  }
-  const list = await res.json();
+  const res = await apiClient.get("/schedules");
+  const list = res?.data;
   return Array.isArray(list) ? list : [];
 }
 

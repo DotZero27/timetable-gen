@@ -2,14 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 async function fetchScheduleDetail(versionId) {
-  const res = await fetch(`/api/schedules/${versionId}`);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to get schedule");
-  }
-  return res.json();
+  const res = await apiClient.get(`/schedules/${versionId}`);
+  return res?.data;
 }
 
 export function useScheduleDetail(versionId) {

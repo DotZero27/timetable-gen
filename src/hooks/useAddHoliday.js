@@ -3,25 +3,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 /**
  * @param {{ date: string, label?: string | null }} payload
  */
 async function addHoliday(payload) {
-  const res = await fetch("/api/holidays", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      date: payload.date,
-      label: payload.label?.trim() || null,
-    }),
+  const res = await apiClient.post("/holidays", {
+    date: payload.date,
+    label: payload.label?.trim() || null,
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.error || "Failed to add date");
-    throw err;
-  }
-  return data;
+  return res?.data;
 }
 
 export function useAddHoliday() {

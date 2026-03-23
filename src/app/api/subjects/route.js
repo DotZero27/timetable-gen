@@ -23,6 +23,22 @@ export async function GET(request) {
   }
 }
 
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const code = searchParams.get("code");
+    if (!code) {
+      return NextResponse.json({ error: "code is required" }, { status: 400 });
+    }
+    const db = getDb();
+    await db.delete(subjects).where(eq(subjects.code, code));
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Try again later!" }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();

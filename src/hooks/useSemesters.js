@@ -2,14 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 async function fetchSemesters() {
-  const res = await fetch("/api/semesters");
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to list semesters");
-  }
-  const list = await res.json();
+  const res = await apiClient.get("/semesters");
+  const list = res?.data;
   return Array.isArray(list) ? list : [];
 }
 

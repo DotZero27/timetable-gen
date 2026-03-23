@@ -2,18 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 async function fetchSubjects(semesterId) {
   const url =
     semesterId != null && semesterId !== ""
-      ? `/api/subjects?semesterId=${semesterId}`
-      : "/api/subjects";
-  const res = await fetch(url);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to list subjects");
-  }
-  const list = await res.json();
+      ? `/subjects?semesterId=${semesterId}`
+      : "/subjects";
+  const res = await apiClient.get(url);
+  const list = res?.data;
   return Array.isArray(list) ? list : [];
 }
 

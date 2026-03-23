@@ -3,13 +3,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "./queryKeys";
+import { apiClient } from "@/lib/apiClient";
 
 async function deleteSchedule(versionId) {
-  const res = await fetch(`/api/schedules/${versionId}`, { method: "DELETE" });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to delete schedule");
-  }
+  await apiClient.delete(`/schedules/${versionId}`);
 }
 
 export function useDeleteSchedule() {

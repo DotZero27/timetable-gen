@@ -17,6 +17,7 @@ import {
 import { useSemesters } from "@/hooks/useSemesters";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useAddSubject } from "@/hooks/useAddSubject";
+import { useDeleteSubject } from "@/hooks/useDeleteSubject";
 
 /**
  * Composite: form to add a subject (code, name, semester) + list of subjects with optional semester filter.
@@ -32,6 +33,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
   const semesters = initialSemesters?.length ? initialSemesters : (semestersFromApi ?? []);
   const { data: subjects, isLoading: listLoading } = useSubjects(filterSemesterId || undefined);
   const { mutate: addSubjectMutate, isPending } = useAddSubject();
+  const { mutate: deleteSubject, isPending: isDeleting, pendingCode: deletingCode } = useDeleteSubject();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -156,6 +158,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                     <th className="text-left font-medium p-3">Code</th>
                     <th className="text-left font-medium p-3">Name</th>
                     <th className="text-left font-medium p-3">Semester</th>
+                    <th className="p-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -172,6 +175,17 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                         <td className="p-3">{sub.name}</td>
                         <td className="p-3 text-muted-foreground">
                           {sem ? `${sem.name}` : sub.semesterId}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            disabled={isDeleting && deletingCode === sub.code}
+                            onClick={() => deleteSubject(sub.code)}
+                          >
+                            {isDeleting && deletingCode === sub.code ? "Deleting…" : "Delete"}
+                          </Button>
                         </td>
                       </motion.tr>
                     );

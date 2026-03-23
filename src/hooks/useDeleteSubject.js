@@ -5,33 +5,25 @@ import { toast } from "sonner";
 import { queryKeys } from "./queryKeys";
 import { apiClient } from "@/lib/apiClient";
 
-/**
- * @param {{ code: string, name: string, semesterId: number }} payload
- */
-async function addSubject(payload) {
-  const res = await apiClient.post("/subjects", {
-    code: payload.code.trim(),
-    name: payload.name.trim(),
-    semesterId: Number(payload.semesterId),
-  });
-  return res?.data;
+async function deleteSubject(code) {
+  await apiClient.delete(`/subjects?code=${encodeURIComponent(code)}`);
 }
 
-export function useAddSubject() {
+export function useDeleteSubject() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: addSubject,
+    mutationFn: deleteSubject,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.subjects.all });
-      toast.success("Subject added");
+      toast.success("Subject deleted");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to add subject");
+      toast.error(err.message || "Failed to delete subject");
     },
   });
   return {
     mutate: mutation.mutate,
-    mutateAsync: mutation.mutateAsync,
     isPending: mutation.isPending,
+    pendingCode: mutation.variables,
   };
 }

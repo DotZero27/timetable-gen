@@ -608,7 +608,7 @@ export function Canvas() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200 flex items-center justify-between gap-4"
+                className="rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200 flex items-center justify-between gap-4 mb-4"
               >
                 <span>Schedule created. Select it below to view.</span>
                 <button
