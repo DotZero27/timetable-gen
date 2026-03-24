@@ -27,29 +27,43 @@ export function SlotCard({
       className={cn("w-full", className)}
     >
       <Card className="py-2 px-3 shadow-none">
-        <CardContent className="p-0 flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            {slot}
-          </span>
-          <span className="font-medium text-sm truncate" title={subjectName}>
+        <CardContent className="p-0 flex flex-col gap-1.5">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+              {slot === "FORENOON" ? "Forenoon" : slot === "AFTERNOON" ? "Afternoon" : slot}
+            </span>
+            {semesterNumber != null && (
+              <span className="rounded border border-border/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                Sem {semesterNumber}
+              </span>
+            )}
+          </div>
+          <span className="font-medium text-sm leading-snug truncate" title={subjectName}>
             {subjectName}
           </span>
-          <span className="text-xs text-muted-foreground">{subjectCode}</span>
-          {semesterNumber != null && (
-            <span className="text-xs text-muted-foreground">Sem {semesterNumber}</span>
-          )}
+          <span className="text-xs text-muted-foreground font-mono">{subjectCode}</span>
           {departmentName && (
-            <span className="text-xs text-muted-foreground truncate" title={departmentName}>
+            <span
+              className="inline-flex w-fit max-w-full items-center rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground truncate"
+              title={departmentName}
+            >
               {departmentName}
             </span>
           )}
           {isElective === true && (
-            <span className="text-[11px] text-amber-700">Elective</span>
-          )}
-          {electiveGroupId && (
-            <span className="text-[11px] text-muted-foreground truncate" title={electiveGroupId}>
-              Group: {formatElectiveGroupLabel(electiveGroupId)}
-            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center rounded border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                Elective
+              </span>
+              {electiveGroupId && (
+                <span
+                  className="text-[10px] text-muted-foreground truncate"
+                  title={electiveGroupId}
+                >
+                  {formatElectiveGroupLabel(electiveGroupId)}
+                </span>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

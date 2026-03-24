@@ -96,6 +96,9 @@ function ScheduleTable({ examSlots, className }) {
                             subjectCode={exam.subjectCode}
                             semesterNumber={exam.semesterNumber}
                             slot={exam.slot}
+                            departmentName={exam.departmentName}
+                            isElective={exam.isElective}
+                            electiveGroupId={exam.electiveGroupId}
                           />
                         ))}
                         {showConflict && (

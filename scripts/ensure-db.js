@@ -80,10 +80,10 @@ const DEPARTMENT_SEEDS = [
   { code: "CIVIL", name: "Civil", degreePrefix: "B.E.", displayOrder: 1 },
   { code: "MECH", name: "Mechanical", degreePrefix: "B.E.", displayOrder: 2 },
   { code: "CHEM", name: "Chemical", degreePrefix: "B.Tech.", displayOrder: 3 },
-  { code: "EEE", name: "Electrical and Electronics Engineering", degreePrefix: "B.E.", displayOrder: 4 },
-  { code: "ECE", name: "Electronics and Communication Engineering", degreePrefix: "B.E.", displayOrder: 5 },
-  { code: "BME", name: "Biomedical Engineering", degreePrefix: "B.E.", displayOrder: 6 },
-  { code: "CSE", name: "Computer Science and Engineering", degreePrefix: "B.E.", displayOrder: 7 },
+  { code: "EEE", name: "Electrical and Electronics", degreePrefix: "B.E.", displayOrder: 4 },
+  { code: "ECE", name: "Electronics and Communication", degreePrefix: "B.E.", displayOrder: 5 },
+  { code: "BME", name: "Biomedical", degreePrefix: "B.E.", displayOrder: 6 },
+  { code: "CSE", name: "Computer Science", degreePrefix: "B.E.", displayOrder: 7 },
   { code: "IT", name: "Information Technology", degreePrefix: "B.Tech.", displayOrder: 8 },
 ];
 
