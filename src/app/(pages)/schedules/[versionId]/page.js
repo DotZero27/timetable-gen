@@ -4,15 +4,25 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, Save, SquarePen, X } from "lucide-react";
+import { ArrowLeft, Download, Plus, Save, SquarePen, X } from "lucide-react";
 import { useScheduleDetail } from "@/hooks/useScheduleDetail";
 import { useUpdateSchedule } from "@/hooks/useUpdateSchedule";
+import { useExportTemplate } from "@/hooks/useExportTemplate";
+import { useSaveExportTemplate } from "@/hooks/useSaveExportTemplate";
 import { useSubjects } from "@/hooks/useSubjects";
 import { CalendarView } from "@/components/schedule/CalendarView";
 import { SlotCard } from "@/components/schedule/SlotCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -32,6 +42,116 @@ const PARITY_FILTERS = [
   { id: "ODD", label: "Odd semesters" },
 ];
 
+const TEMPLATE_DEFAULTS = {
+  collegeName: "Sri Sivasubramaniya Nadar College of Engineering, Kalavakkam - 603110",
+  examTitle: "End Semester Theory Examinations, April / May 2026 - Time Table",
+  regulation: "2021",
+  creditSystem: "(An Autonomous Institution, Affiliated to Anna University, Chennai)",
+  degree: "B.E. / B.Tech.",
+  batchYears: "2022-2026",
+  fnTiming: "09.30 am to 12.30 pm",
+  anTiming: "01.30 pm to 04.30 pm",
+  publishedDate: "",
+  controllerName: "",
+  principalName: "",
+};
+
+const TEMPLATE_FIELDS = [
+  { key: "collegeName", label: "College Name", required: true },
+  { key: "examTitle", label: "Exam Title", required: true },
+  { key: "regulation", label: "Regulation", required: true },
+  { key: "creditSystem", label: "Institution Subtitle", required: true },
+  { key: "degree", label: "Degree", required: true },
+  { key: "batchYears", label: "Batch Years", required: true },
+  { key: "fnTiming", label: "FN Timing", required: false },
+  { key: "anTiming", label: "AN Timing", required: false },
+  { key: "publishedDate", label: "Published Date", required: false },
+  { key: "controllerName", label: "Controller Name", required: false },
+  { key: "principalName", label: "Principal Name", required: false },
+];
+
+function ExportTemplateDialog({ open, onOpenChange, versionId }) {
+  const { data: template } = useExportTemplate(versionId);
+  const { mutate: saveTemplate, isPending } = useSaveExportTemplate();
+  const [form, setForm] = React.useState(TEMPLATE_DEFAULTS);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (template) {
+      setForm({
+        collegeName: template.collegeName ?? "",
+        examTitle: template.examTitle ?? "",
+        regulation: template.regulation ?? "",
+        creditSystem: template.creditSystem ?? "",
+        degree: template.degree ?? "",
+        batchYears: template.batchYears ?? "",
+        fnTiming: template.fnTiming ?? TEMPLATE_DEFAULTS.fnTiming,
+        anTiming: template.anTiming ?? TEMPLATE_DEFAULTS.anTiming,
+        publishedDate: template.publishedDate ?? "",
+        controllerName: template.controllerName ?? "",
+        principalName: template.principalName ?? "",
+      });
+    } else {
+      setForm(TEMPLATE_DEFAULTS);
+    }
+  }, [open, template]);
+
+  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const requiredFilled = TEMPLATE_FIELDS.filter((f) => f.required).every(
+    (f) => form[f.key]?.trim()
+  );
+
+  const handleSaveAndDownload = () => {
+    saveTemplate(
+      { scheduleVersionId: versionId, ...form },
+      {
+        onSuccess: () => {
+          window.open(`/api/schedules/${versionId}/export/docx`, "_blank");
+          onOpenChange(false);
+        },
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Export Template</DialogTitle>
+          <DialogDescription>
+            Configure the header and footer fields for the exported DOCX document.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4">
+          {TEMPLATE_FIELDS.map((field) => (
+            <div key={field.key} className="space-y-1.5">
+              <Label className="text-xs">
+                {field.label}
+                {field.required && <span className="text-destructive ml-0.5">*</span>}
+              </Label>
+              <Input
+                value={form[field.key]}
+                onChange={(e) => update(field.key, e.target.value)}
+                placeholder={field.label}
+              />
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveAndDownload} disabled={isPending || !requiredFilled}>
+            <Download className="size-4 mr-1.5" />
+            {isPending ? "Saving..." : "Save & Download"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ScheduleDetailPage() {
   const { versionId } = useParams();
   const numericId = Number(versionId);
@@ -49,6 +169,7 @@ export default function ScheduleDetailPage() {
   const [subjectSelectOpenKey, setSubjectSelectOpenKey] = React.useState(null);
   const [subjectSearchQuery, setSubjectSearchQuery] = React.useState("");
   const [debouncedSubjectSearch, setDebouncedSubjectSearch] = React.useState("");
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
   const editable = schedule?.status === "draft";
 
   React.useEffect(() => {
@@ -250,6 +371,15 @@ export default function ScheduleDetailPage() {
           Back to schedules
         </Link>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExportDialogOpen(true)}
+          >
+            <Download className="size-4 mr-1.5" />
+            Download DOCX
+          </Button>
           {editable && (
             <>
               {!editMode ? (
@@ -528,6 +658,12 @@ export default function ScheduleDetailPage() {
           )}
         </AnimatePresence>
       </div>
+
+      <ExportTemplateDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        versionId={numericId}
+      />
     </div>
   );
 }

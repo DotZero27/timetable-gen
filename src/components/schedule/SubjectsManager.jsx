@@ -157,6 +157,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
   const [departmentIds, setDepartmentIds] = React.useState([]);
   const [isElective, setIsElective] = React.useState(false);
   const [electiveGroupId, setElectiveGroupId] = React.useState("");
+  const [isTheoryCumPractical, setIsTheoryCumPractical] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [departmentPicker, setDepartmentPicker] = React.useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
@@ -214,6 +215,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
         departmentIds: departmentIds.map((id) => Number(id)),
         isElective,
         electiveGroupId: isElective ? electiveGroupId.trim() : "",
+        isTheoryCumPractical,
       },
       {
         onSuccess: () => {
@@ -223,6 +225,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
           setDepartmentIds([]);
           setIsElective(false);
           setElectiveGroupId("");
+          setIsTheoryCumPractical(false);
           setDepartmentPicker("");
           setError(null);
           setIsAddDialogOpen(false);
@@ -289,6 +292,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
       departmentIds: [...new Set(allDepartmentsForCode)],
       isElective: sub.isElective ?? false,
       electiveGroupId: sub.electiveGroupId ?? "",
+      isTheoryCumPractical: sub.isTheoryCumPractical ?? false,
     });
   };
 
@@ -316,6 +320,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
         electiveGroupId: editValues.isElective
           ? String(editValues.electiveGroupId ?? "").trim()
           : "",
+        isTheoryCumPractical: editValues.isTheoryCumPractical ?? false,
       },
       { onSuccess: () => cancelEditing() },
     );
@@ -610,6 +615,21 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                 )}
               </section>
 
+              <section className="space-y-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Course Type
+                </p>
+                <label className="flex items-center gap-2 cursor-pointer pb-2">
+                  <input
+                    type="checkbox"
+                    checked={isTheoryCumPractical}
+                    onChange={(e) => setIsTheoryCumPractical(e.target.checked)}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                  <span className="text-sm font-medium">Theory cum Practical</span>
+                </label>
+              </section>
+
               <div className="flex justify-end border-t pt-3">
                 <Button type="submit" disabled={isPending}>
                   {isPending ? "Adding…" : "Add subject"}
@@ -726,23 +746,30 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                           <td className="p-3">
                             <div className="space-y-1">
                               <div>{sub.name}</div>
-                              {sub.isElective ? (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                    Elective
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {sub.isElective && (
+                                  <>
+                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                      Elective
+                                    </span>
+                                    <span
+                                      className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
+                                      title={sub.electiveGroupId || undefined}
+                                    >
+                                      {sub.electiveGroupId
+                                        ? formatElectiveGroupLabel(
+                                            sub.electiveGroupId,
+                                          )
+                                        : "Ungrouped elective"}
+                                    </span>
+                                  </>
+                                )}
+                                {sub.isTheoryCumPractical && (
+                                  <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                                    TCP
                                   </span>
-                                  <span
-                                    className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
-                                    title={sub.electiveGroupId || undefined}
-                                  >
-                                    {sub.electiveGroupId
-                                      ? formatElectiveGroupLabel(
-                                          sub.electiveGroupId,
-                                        )
-                                      : "Ungrouped elective"}
-                                  </span>
-                                </div>
-                              ) : null}
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="p-3 text-muted-foreground">
@@ -912,7 +939,7 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label className="block mb-1">Type</Label>
               <label className="mt-2 flex items-center gap-2 cursor-pointer">
                 <input
@@ -930,6 +957,20 @@ export function SubjectsManager({ semesters: initialSemesters, className }) {
                   className="h-4 w-4 rounded border-input"
                 />
                 <span className="text-sm">Elective</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editValues.isTheoryCumPractical ?? false}
+                  onChange={(e) =>
+                    setEditValues((v) => ({
+                      ...v,
+                      isTheoryCumPractical: e.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span className="text-sm">Theory cum Practical</span>
               </label>
             </div>
           </div>

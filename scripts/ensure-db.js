@@ -29,7 +29,8 @@ const DDL = [
     semester_id INTEGER NOT NULL REFERENCES semesters(id),
     department_id INTEGER NOT NULL REFERENCES departments(id),
     is_elective INTEGER NOT NULL DEFAULT 0,
-    elective_group_id TEXT
+    elective_group_id TEXT,
+    is_tcp INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS subject_departments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +149,12 @@ function ensureDb() {
     const hasElectiveGroupCol = subjectColsAfterMigration.some((c) => c.name === "elective_group_id");
     if (!hasElectiveGroupCol) {
       sqlite.run("ALTER TABLE subjects ADD COLUMN elective_group_id TEXT");
+    }
+
+    // Add is_tcp column to subjects if missing
+    const subjectColsTcp = sqlite.prepare("PRAGMA table_info(subjects)").all();
+    if (!subjectColsTcp.some((c) => c.name === "is_tcp")) {
+      sqlite.run("ALTER TABLE subjects ADD COLUMN is_tcp INTEGER NOT NULL DEFAULT 0");
     }
 
     // Ensure subject_departments exists and backfill from legacy subjects.department_id.

@@ -29,6 +29,7 @@ export const subjects = sqliteTable("subjects", {
     .references(() => departments.id),
   isElective: integer("is_elective", { mode: "boolean" }).notNull().default(false),
   electiveGroupId: text("elective_group_id"),
+  isTheoryCumPractical: integer("is_tcp", { mode: "boolean" }).notNull().default(false),
 });
 
 export const subjectDepartments = sqliteTable("subject_departments", {

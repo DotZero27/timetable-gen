@@ -29,7 +29,7 @@ const sem2 = [
   { code: "UGA2276", name: "Tamils and Technology", semester: 2, department: "CSE", elective: "" },
 
   // Civil
-  { code: "UHS2342", name: "Application of Psychology in Everyday Life", semester: 2, department: "CIVIL", elective: "" },
+  { code: "UHS2342", name: "Application of Psychology in Everyday Life", semester: 2, department: "CIVIL", elective: "", tcp: "yes" },
   { code: "UCE2202", name: "Engineering Mechanics for Civil Engineering", semester: 2, department: "CIVIL", elective: "" },
 
   // Mechanical
@@ -44,7 +44,7 @@ const sem2 = [
   { code: "UME2251", name: "Engineering Mechanics for Electrical Engineers", semester: 2, department: "MECH", elective: "" },
 
   // ECE
-  { code: "UHS2343", name: "Film Appreciation", semester: 2, department: "ECE", elective: "" },
+  { code: "UHS2343", name: "Film Appreciation", semester: 2, department: "ECE", elective: "", tcp: "yes" },
   { code: "UEE2251", name: "Basic Electrical and Instrumentation Engineering", semester: 2, department: "EEE", elective: "" },
   { code: "UVC2002", name: "Circuit Analysis", semester: 2, department: "ECE", elective: "" },
 
@@ -57,7 +57,7 @@ const sem2 = [
   { code: "UCN2302", name: "Foundations of Data Science", semester: 2, department: "CSE", elective: "" },
 
   // IT
-  { code: "UIT2201", name: "Programming Data Structures", semester: 2, department: "IT", elective: "" },
+  { code: "UIT2201", name: "Programming Data Structures", semester: 2, department: "IT", elective: "", tcp: "yes" },
   { code: "UPH2251", name: "Physics for Information Science and Technology", semester: 2, department: "IT", elective: "" },
 ];
 
@@ -69,7 +69,7 @@ const sem3 = [
   { code: "UCE2302", name: "Fluid Mechanics", semester: 3, department: "CIVIL", elective: "" },
   { code: "UCE2303", name: "Engineering Geology", semester: 3, department: "CIVIL", elective: "" },
   { code: "UCE2304", name: "Strength of Materials", semester: 3, department: "CIVIL", elective: "" },
-  { code: "UHS2376", name: "Universal Human Values-2 Understanding Harmony", semester: 3, department: "CIVIL", elective: "" },
+  { code: "UHS2376", name: "Universal Human Values-2 Understanding Harmony", semester: 3, department: "CIVIL", elective: "", tcp: "yes" },
 
   // Mechanical
   { code: "UMA2352", name: "Statistics and Numerical Methods for Mechanical Engineering", semester: 3, department: "MECH", elective: "" },
@@ -80,7 +80,7 @@ const sem3 = [
 
   // Chemical
   { code: "UMA2376", name: "Transform Techniques and Partial Differential Equations", semester: 3, department: "CHEM", elective: "" },
-  { code: "UCH2317", name: "Principles of Electronics Engineering", semester: 3, department: "CHEM", elective: "" },
+  { code: "UCH2317", name: "Principles of Electronics Engineering", semester: 3, department: "CHEM", elective: "", tcp: "yes" },
   { code: "UCH2304", name: "Food Engineering", semester: 3, department: "CHEM", elective: "" },
   { code: "UCH2302", name: "Chemical Process Industries", semester: 3, department: "CHEM", elective: "" },
   { code: "UCH2317", name: "Chemical Process Calculations", semester: 3, department: "CHEM", elective: "" },
@@ -92,7 +92,7 @@ const sem3 = [
 
   // ECE
   { code: "UEC2376", name: "Signals and Systems", semester: 3, department: "ECE", elective: "" },
-  { code: "UEC2304", name: "Digital System Design", semester: 3, department: "ECE", elective: "" },
+  { code: "UEC2304", name: "Digital System Design", semester: 3, department: "ECE", elective: "", tcp: "yes" },
   { code: "UEC2305", name: "OOPS and Data Structures", semester: 3, department: "ECE", elective: "" },
   { code: "UEC2301", name: "Analog Circuits", semester: 3, department: "ECE", elective: "" },
 
@@ -121,7 +121,7 @@ const sem4 = [
   { code: "UCE2403", name: "Soil Mechanics", semester: 4, department: "CIVIL", elective: "" },
   { code: "UCE2404", name: "Applied Hydraulic Engineering", semester: 4, department: "CIVIL", elective: "" },
   { code: "UCE2405", name: "Structural Analysis", semester: 4, department: "CIVIL", elective: "" },
-  { code: "UME2404", name: "Metrology and Measurements", semester: 4, department: "MECH", elective: "" },
+  { code: "UME2404", name: "Metrology and Measurements", semester: 4, department: "MECH", elective: "", tcp: "yes" },
 
   // Mechanical
   { code: "UME2401", name: "Kinematics of Machinery", semester: 4, department: "MECH", elective: "" },
@@ -130,10 +130,10 @@ const sem4 = [
   { code: "UME2402", name: "Manufacturing Processes II", semester: 4, department: "MECH", elective: "" },
 
   // Chemical
-  { code: "UMA2431", name: "Numerical Methods for Chemical Engineering", semester: 4, department: "CHEM", elective: "" },
-  { code: "UCH2403", name: "Chemical Engineering Thermodynamics-I", semester: 4, department: "CHEM", elective: "" },
+  { code: "UMA2431", name: "Numerical Methods for Chemical Engineering", semester: 4, department: "CHEM", elective: "", tcp: "yes" },
+  { code: "UCH2403", name: "Chemical Engineering Thermodynamics-I", semester: 4, department: "CHEM", elective: "", tcp: "yes" },
   { code: "UCH2502", name: "Mechanical Operations", semester: 4, department: "CHEM", elective: "" },
-  { code: "UCH2404", name: "Industrial Process Plant Safety", semester: 4, department: "CHEM", elective: "" },
+  { code: "UCH2404", name: "Industrial Process Plant Safety", semester: 4, department: "CHEM", elective: "", tcp: "yes" },
 
   // EEE
   { code: "UMA2451", name: "Probability and Statistics for Electrical Engineering", semester: 4, department: "EEE", elective: "" },
@@ -175,7 +175,7 @@ const sem4 = [
 const sem5 = [
   // Common (Management subject across multiple depts)
   { code: "UBA2541", name: "Principles of Management", semester: 5, department: "CSE", elective: "" },
-  { code: "UBA2545", name: "Work Ethics, Corporate Social Responsibility and Governance", semester: 5, department: "CSE", elective: "yes" },
+  { code: "UBA2545", name: "Work Ethics, Corporate Social Responsibility and Governance", semester: 5, department: "CSE", elective: "yes", tcp: "yes" },
 
   // Civil
   { code: "UCE2502", name: "Design of Reinforced Concrete Structures", semester: 5, department: "CIVIL", elective: "" },
@@ -193,14 +193,14 @@ const sem5 = [
   // Chemical
   { code: "UCH2502", name: "Chemical Reaction Engineering-II", semester: 5, department: "CHEM", elective: "" },
   { code: "UCH2507", name: "Mass Transfer I", semester: 5, department: "CHEM", elective: "" },
-  { code: "UCH2504", name: "Process Dynamics and Control", semester: 5, department: "CHEM", elective: "" },
+  { code: "UCH2504", name: "Process Dynamics and Control", semester: 5, department: "CHEM", elective: "", tcp: "yes" },
   { code: "UCH2526", name: "Food Technology", semester: 5, department: "CHEM", elective: "" },
   { code: "UCH2501", name: "Chemical Engineering Thermodynamics-II", semester: 5, department: "CHEM", elective: "" },
 
   // EEE
   { code: "UEE2502", name: "Electrical Machines-II", semester: 5, department: "EEE", elective: "" },
   { code: "UEE2503", name: "Electrical Instrumentation Systems", semester: 5, department: "EEE", elective: "" },
-  { code: "UEE2504", name: "Digital Logic Systems and Practices", semester: 5, department: "EEE", elective: "" },
+  { code: "UEE2504", name: "Digital Logic Systems and Practices", semester: 5, department: "EEE", elective: "", tcp: "yes" },
   { code: "UEE2525", name: "Solar Energy Systems", semester: 5, department: "EEE", elective: "" },
   { code: "UEE2505", name: "Power Electronics", semester: 5, department: "EEE", elective: "" },
 
@@ -298,7 +298,7 @@ const sem7 = [
   // Chemical
   { code: "UCH2702", name: "Process Equipment Design", semester: 7, department: "CHEM", elective: "" },
   { code: "UCH2703", name: "Transport Phenomena", semester: 7, department: "CHEM", elective: "" },
-  { code: "UME2776", name: "Product Design and Development", semester: 7, department: "MECH", elective: "" },
+  { code: "UME2776", name: "Product Design and Development", semester: 7, department: "MECH", elective: "", tcp: "yes" },
 
   // EEE
   { code: "UEE2701", name: "Solid State Drives", semester: 7, department: "EEE", elective: "" },
@@ -327,13 +327,13 @@ const sem7 = [
   { code: "UCS2722", name: "Object Oriented Analysis and Design", semester: 7, department: "CSE", elective: "" },
   { code: "UCS2727", name: "User Experience Design", semester: 7, department: "CSE", elective: "" },
   { code: "UCS2754", name: "Agile Methodologies", semester: 7, department: "CSE", elective: "" },
-  { code: "UCS2702", name: "Compiler Design", semester: 7, department: "CSE", elective: "" },
+  { code: "UCS2702", name: "Compiler Design", semester: 7, department: "CSE", elective: "", tcp: "yes" },
 
   // IT
   { code: "UIT2701", name: "Network and Security", semester: 7, department: "IT", elective: "" },
   { code: "UIT2703", name: "Distributed Systems and Architecture", semester: 7, department: "IT", elective: "" },
   { code: "UIT2721", name: "Deep Learning Concepts and Architectures", semester: 7, department: "IT", elective: "" },
-  { code: "UIT2729", name: "Image Processing and Computer Vision", semester: 7, department: "IT", elective: "" },
+  { code: "UIT2729", name: "Image Processing and Computer Vision", semester: 7, department: "IT", elective: "", tcp: "yes" },
   { code: "UIT2739", name: "Full Stack Development", semester: 7, department: "IT", elective: "" },
   { code: "UIT2724", name: "Introduction to Blockchain Technology", semester: 7, department: "IT", elective: "" },
 ];
@@ -412,20 +412,21 @@ function dedup(arr) {
 const allSubjects = dedup([...sem1, ...sem2, ...sem3, ...sem4, ...sem5, ...sem6, ...sem7, ...sem8]);
 
 // ── Write XLSX files ────────────────────────────────────────────────
-const header = ["code", "name", "semester", "department", "elective", "electiveGroupId"];
+const header = ["code", "name", "semester", "department", "elective", "electiveGroupId", "tcp"];
 
 function withElectiveGroups(data) {
   return data.map((row) => {
     const isElective = String(row.elective ?? "").trim().toLowerCase() === "yes";
     const existingGroup = String(row.electiveGroupId ?? "").trim();
+    const tcp = String(row.tcp ?? "").trim();
     if (!isElective) {
-      return { ...row, electiveGroupId: "" };
+      return { ...row, electiveGroupId: "", tcp };
     }
     if (existingGroup) {
-      return { ...row, electiveGroupId: existingGroup };
+      return { ...row, electiveGroupId: existingGroup, tcp };
     }
     // Fallback grouping for any elective row without explicit group mapping.
-    return { ...row, electiveGroupId: `SEM${row.semester}_core_elective` };
+    return { ...row, electiveGroupId: `SEM${row.semester}_core_elective`, tcp };
   });
 }
 

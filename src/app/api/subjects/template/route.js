@@ -10,6 +10,7 @@ export async function GET() {
       departments: "CSE",
       elective: "",
       electiveGroupId: "",
+      tcp: "",
     },
     {
       code: "UMA2377",
@@ -18,11 +19,12 @@ export async function GET() {
       departments: "CSE,IT",
       elective: "",
       electiveGroupId: "",
+      tcp: "",
     },
   ];
 
   const ws = XLSX.utils.json_to_sheet(data, {
-    header: ["code", "name", "semester", "departments", "elective", "electiveGroupId"],
+    header: ["code", "name", "semester", "departments", "elective", "electiveGroupId", "tcp"],
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Subjects");
@@ -33,6 +35,7 @@ export async function GET() {
     { field: "departments", required: "yes", example: "CSE,IT", notes: "Comma-separated department codes for this subject." },
     { field: "elective", required: "no", example: "yes", notes: "Use yes/true/1 for elective subjects." },
     { field: "electiveGroupId", required: "no", example: "SEM5_open_elective", notes: "Required only when elective is yes." },
+    { field: "tcp", required: "no", example: "yes", notes: "Use yes/true/1 for Theory cum Practical subjects." },
   ];
   const ins = XLSX.utils.json_to_sheet(instructions, {
     header: ["field", "required", "example", "notes"],

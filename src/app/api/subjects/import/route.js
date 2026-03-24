@@ -87,7 +87,10 @@ export async function POST(request) {
       const isElective = ["yes", "true", "1"].includes(electiveRaw);
       const electiveGroupId = String(row.electiveGroupId ?? row.elective_group_id ?? "").trim() || null;
 
-      toInsert.push({ code, name, semesterId, departmentIds: [...new Set(departmentIds)], isElective, electiveGroupId });
+      const tcpRaw = String(row.tcp ?? "").trim().toLowerCase();
+      const isTheoryCumPractical = ["yes", "true", "1"].includes(tcpRaw);
+
+      toInsert.push({ code, name, semesterId, departmentIds: [...new Set(departmentIds)], isElective, electiveGroupId, isTheoryCumPractical });
     }
 
     if (errors.length > 0) {
@@ -108,6 +111,7 @@ export async function POST(request) {
           departmentId: row.departmentIds[0],
           isElective: row.isElective,
           electiveGroupId: row.electiveGroupId,
+          isTheoryCumPractical: row.isTheoryCumPractical,
         });
         inserted++;
       } catch (err) {

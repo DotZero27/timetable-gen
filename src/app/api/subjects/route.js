@@ -18,6 +18,7 @@ export async function GET(request) {
         departmentId: subjectDepartments.departmentId,
         isElective: subjects.isElective,
         electiveGroupId: subjects.electiveGroupId,
+        isTheoryCumPractical: subjects.isTheoryCumPractical,
         departmentCode: departments.code,
         departmentName: departments.name,
       })
@@ -61,7 +62,7 @@ export async function DELETE(request) {
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { code, name, semesterId, departmentIds, isElective, electiveGroupId } = body;
+    const { code, name, semesterId, departmentIds, isElective, electiveGroupId, isTheoryCumPractical } = body;
     if (!code) {
       return NextResponse.json({ error: "code is required" }, { status: 400 });
     }
@@ -78,6 +79,7 @@ export async function PUT(request) {
     if (semesterId !== undefined) updates.semesterId = Number(semesterId);
     if (parsedDepartmentIds?.length) updates.departmentId = parsedDepartmentIds[0];
     if (isElective !== undefined) updates.isElective = isElective === true;
+    if (isTheoryCumPractical !== undefined) updates.isTheoryCumPractical = isTheoryCumPractical === true;
     if (electiveGroupId !== undefined) {
       updates.electiveGroupId = String(electiveGroupId ?? "").trim() || null;
     }
@@ -111,6 +113,7 @@ export async function PUT(request) {
         departmentId: subjectDepartments.departmentId,
         isElective: subjects.isElective,
         electiveGroupId: subjects.electiveGroupId,
+        isTheoryCumPractical: subjects.isTheoryCumPractical,
         departmentCode: departments.code,
         departmentName: departments.name,
       })
@@ -132,7 +135,7 @@ export async function PUT(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { code, name, semesterId, departmentIds, isElective, electiveGroupId } = body;
+    const { code, name, semesterId, departmentIds, isElective, electiveGroupId, isTheoryCumPractical } = body;
     const parsedDepartmentIds =
       Array.isArray(departmentIds) && departmentIds.length > 0
         ? [...new Set(departmentIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))]
@@ -153,6 +156,7 @@ export async function POST(request) {
         departmentId: parsedDepartmentIds[0],
         isElective: isElective === true,
         electiveGroupId: String(electiveGroupId ?? "").trim() || null,
+        isTheoryCumPractical: isTheoryCumPractical === true,
       })
       .returning();
     for (const deptId of parsedDepartmentIds) {
@@ -171,6 +175,7 @@ export async function POST(request) {
         departmentId: subjectDepartments.departmentId,
         isElective: subjects.isElective,
         electiveGroupId: subjects.electiveGroupId,
+        isTheoryCumPractical: subjects.isTheoryCumPractical,
         departmentCode: departments.code,
         departmentName: departments.name,
       })

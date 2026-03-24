@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun scripts/gen-test-data.js)"
+      "Bash(bun scripts/gen-test-data.js)",
+      "Bash(ls:*)",
+      "Bash(pdftoppm:*)"
     ]
   }
 }

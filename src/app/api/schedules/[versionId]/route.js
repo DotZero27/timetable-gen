@@ -30,6 +30,7 @@ export async function GET(request, { params }) {
         departmentId: examSlots.departmentId,
         isElective: subjects.isElective,
         electiveGroupId: subjects.electiveGroupId,
+        isTheoryCumPractical: subjects.isTheoryCumPractical,
         departmentCode: departments.code,
         departmentName: departments.name,
       })
@@ -169,6 +170,7 @@ export async function PUT(request, { params }) {
         departmentId: examSlots.departmentId,
         isElective: subjects.isElective,
         electiveGroupId: subjects.electiveGroupId,
+        isTheoryCumPractical: subjects.isTheoryCumPractical,
         departmentCode: departments.code,
         departmentName: departments.name,
       })

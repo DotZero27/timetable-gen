@@ -17,4 +17,7 @@ export const queryKeys = {
     all: ["holidays"],
     range: (from, to) => (from && to ? ["holidays", from, to] : ["holidays"]),
   },
+  exportTemplates: {
+    detail: (versionId) => ["exportTemplates", versionId],
+  },
 };
