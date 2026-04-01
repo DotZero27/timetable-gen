@@ -45,7 +45,7 @@ export function NavBar() {
           })}
         </nav>
 
-        <div className="ml-auto">
+        {/* <div className="ml-auto">
           <Link
             href="/c"
             className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
@@ -54,7 +54,7 @@ export function NavBar() {
             <LayoutGrid className="size-4" />
             <span className="hidden sm:inline">Canvas</span>
           </Link>
-        </div>
+        </div> */}
       </div>
     </header>
   );

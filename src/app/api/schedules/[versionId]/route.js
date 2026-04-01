@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { scheduleVersions, examSlots, subjects, semesters, departments, subjectDepartments } from "@/db/schema";
+import {
+  scheduleVersions,
+  examSlots,
+  exportTemplates,
+  subjects,
+  semesters,
+  departments,
+  subjectDepartments,
+} from "@/db/schema";
 import { eq, asc, inArray } from "drizzle-orm";
 import { validateSchedule } from "@/lib/schedule/validate";
 
@@ -207,6 +215,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Schedule version not found" }, { status: 404 });
     }
     await db.delete(examSlots).where(eq(examSlots.scheduleVersionId, id));
+    await db.delete(exportTemplates).where(eq(exportTemplates.scheduleVersionId, id));
     await db.delete(scheduleVersions).where(eq(scheduleVersions.id, id));
     return new NextResponse(null, { status: 204 });
   } catch (err) {
