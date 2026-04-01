@@ -70,7 +70,7 @@ const TEMPLATE_FIELDS = [
   { key: "principalName", label: "Principal Name", required: false },
 ];
 
-function ExportTemplateDialog({ open, onOpenChange, versionId }) {
+function ExportTemplateDialog({ open, onOpenChange, versionId, exportFormat = "docx" }) {
   const { data: template } = useExportTemplate(versionId);
   const { mutate: saveTemplate, isPending } = useSaveExportTemplate();
   const [form, setForm] = React.useState(TEMPLATE_DEFAULTS);
@@ -107,7 +107,7 @@ function ExportTemplateDialog({ open, onOpenChange, versionId }) {
       { scheduleVersionId: versionId, ...form },
       {
         onSuccess: () => {
-          window.open(`/api/schedules/${versionId}/export/docx`, "_blank");
+          window.open(`/api/schedules/${versionId}/export/${exportFormat}`, "_blank");
           onOpenChange(false);
         },
       }
@@ -170,6 +170,7 @@ export default function ScheduleDetailPage() {
   const [subjectSearchQuery, setSubjectSearchQuery] = React.useState("");
   const [debouncedSubjectSearch, setDebouncedSubjectSearch] = React.useState("");
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
+  const [exportFormat, setExportFormat] = React.useState("docx");
   const editable = schedule?.status === "draft";
 
   React.useEffect(() => {
@@ -375,10 +376,25 @@ export default function ScheduleDetailPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setExportDialogOpen(true)}
+            onClick={() => {
+              setExportFormat("docx");
+              setExportDialogOpen(true);
+            }}
           >
             <Download className="size-4 mr-1.5" />
             Download DOCX
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setExportFormat("pdf");
+              setExportDialogOpen(true);
+            }}
+          >
+            <Download className="size-4 mr-1.5" />
+            Download PDF
           </Button>
           {editable && (
             <>
@@ -663,6 +679,7 @@ export default function ScheduleDetailPage() {
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
         versionId={numericId}
+        exportFormat={exportFormat}
       />
     </div>
   );
