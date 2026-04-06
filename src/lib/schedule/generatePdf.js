@@ -199,7 +199,7 @@ function drawCommonTable(page, fonts, rows, tableY, usableW, margin) {
       drawCell(page, row.slot === "FORENOON" ? "FN" : "AN", margin + dateW, rowY, sessW, rh, fonts.regular, { align: "center" });
       const allEntries = [...row.cells.values()].flat();
       const text = cellText(uniqueEntriesByCode(allEntries));
-      drawCell(page, text || "", margin + dateW + sessW, rowY, subjectW, rh, fonts.regular, { align: "center" });
+      drawCell(page, text || "", margin + dateW + sessW, rowY, subjectW, rh, fonts.regular, { align: "left" });
       rowY -= rh;
     });
 
@@ -250,7 +250,7 @@ function drawDepartmentTable(page, fonts, rows, departments, tableY, usableW, ma
       let cx = margin + dateW + sessW;
       for (const dept of departments) {
         const entries = row.cells.get(dept.id) ?? [];
-        drawCell(page, cellText(entries) || "", cx, rowY, deptColW, rh, fonts.regular, { align: "center" });
+        drawCell(page, cellText(entries) || "", cx, rowY, deptColW, rh, fonts.regular, { align: "left" });
         cx += deptColW;
       }
       rowY -= rh;
